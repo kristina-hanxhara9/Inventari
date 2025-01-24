@@ -61,15 +61,16 @@ app.post('/api/records', async (req, res) => {
   }
 });
 
-// API endpoint to fetch all records from the external API
+// Fetch records from external API with logging
 app.get('/api/records', async (req, res) => {
   try {
+    console.log('Fetching records from external API...');
     const response = await axios.get('https://inventari-okqu.onrender.com/api/records');
-    
-    // Send the fetched records from the external API
+    console.log('Received records:', response.data); // Log the response data
     res.status(200).send(response.data);
   } catch (error) {
-    console.error('Error fetching records:', error.message);
+    console.error('Error fetching records from external API:', error.message);
+    console.error('Error response:', error.response ? error.response.data : 'No response data');
     return res.status(500).send({ error: 'Failed to fetch records from external API' });
   }
 });
