@@ -2,9 +2,10 @@
   "name": "daja-calculator",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node app.js",
+    "postinstall": "npm rebuild sqlite3"
   },
   "keywords": [],
   "author": "",
@@ -13,7 +14,6 @@
     "body-parser": "^1.20.3",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "pg": "^8.13.1",
     "sqlite3": "^5.1.7"
   }
 }
