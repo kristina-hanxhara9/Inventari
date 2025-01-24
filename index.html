@@ -246,6 +246,7 @@
         }
 
         // Save the current record
+// Save the current record
 async function saveRecord() {
     const date = new Date().toLocaleDateString();
     const details = allProducts
@@ -255,31 +256,37 @@ async function saveRecord() {
             const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
             const totalCost = productPrice * quantity;
 
+            // If there's a valid entry, return the record data
             if (productName && quantity > 0 && totalCost > 0) {
                 return { product: productName, quantity, totalCost };
             }
         })
-        .filter(detail => detail);
+        .filter(detail => detail); // Remove any undefined/null details
 
     const total = details.reduce((acc, curr) => acc + curr.totalCost, 0);
 
+    // Check if there are any valid records to save
     if (details.length === 0) {
         alert("No valid records to save!");
         return;
     }
 
-    // Simulate saving to a server (for now, just add to the records array)
+    // Simulate saving the record by adding it to the local records array
     const newRecord = { date, details, total };
     records.push(newRecord);
-    updateRecordTable(); // Update the table with new records
+
+    // Update the record table with the newly saved record
+    updateRecordTable();
 
     alert('Record saved successfully!');
 }
 
 
-       // Update the record table
+
+
+      // Update the record table to display the saved records
 function updateRecordTable() {
-    recordTable.innerHTML = '';
+    recordTable.innerHTML = ''; // Clear the table before updating
     records.forEach((record, index) => {
         const row = document.createElement("tr");
         row.innerHTML = `
@@ -294,6 +301,7 @@ function updateRecordTable() {
         recordTable.appendChild(row);
     });
 }
+
 
         // Format the details for display
         function formatDetails(details) {
