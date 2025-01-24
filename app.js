@@ -3,6 +3,7 @@ const app = express();
 const bodyParser = require('body-parser');
 const { Client } = require('pg');  // Importing pg package
 const path = require('path');
+require('dotenv').config();  // Loads environment variables from a .env file
 
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname)));
