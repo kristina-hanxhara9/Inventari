@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Cost Calculator</title>
+    <title>Inventari</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         input, button { margin: 10px 5px; padding: 5px; }
@@ -40,9 +40,10 @@
     </style>
 </head>
 <body>
-    <h1>Daily Cost Calculator</h1>
+    <h1>Inventari</h1>
 
-    <h2>Products</h2>
+    <h2>Produktet
+    </h2>
     <div class="scrollable">
         <table>
             <thead>
@@ -57,11 +58,11 @@
         </table>
     </div>
 
-    <h3>Total Daily Cost: L<span id="dailyTotal">0.00</span></h3>
+    <h3>Kostoja totale ditore: L<span id="dailyTotal">0.00</span></h3>
     <button onclick="saveRecord()">Ruaji te dhenat</button>
 
     <h2>Te dhenat</h2>
-    <button onclick="exportToCSV()">Export to CSV</button>
+    <button onclick="exportToCSV()">Shkarko</button>
     <div class="scrollable">
         <table>
             <thead>
@@ -78,7 +79,7 @@
 
     <!-- Edit Modal -->
     <div id="editModal" class="modal">
-        <h3>Edit Record</h3>
+        <h3>Rregullo</h3>
         <div class="scrollable">
             <table>
                 <thead>
