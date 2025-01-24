@@ -1,23 +1,35 @@
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
-const sqlite3 = require('sqlite3').verbose();
+const { Client } = require('pg');  // Importing pg package
 const path = require('path');
 
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname)));
 
-// Create a database connection
-const db = new sqlite3.Database('records.db');
+// Set up PostgreSQL client with environment variables (DATABASE_URL from Render/Railway)
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,  // PostgreSQL connection URL
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+// Connect to PostgreSQL database
+client.connect();
 
 // Create table if it doesn't exist
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS records (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+client.query(`
+  CREATE TABLE IF NOT EXISTS records (
+    id SERIAL PRIMARY KEY,
     date TEXT,
     details TEXT,
     total REAL
-  )`);
+  )
+`, (err) => {
+  if (err) {
+    console.error('Error creating table:', err);
+  }
 });
 
 // API to save a record
@@ -25,24 +37,23 @@ app.post('/api/records', (req, res) => {
   const { date, details, total } = req.body;
   const detailsStr = JSON.stringify(details);
 
-  db.run(`INSERT INTO records (date, details, total) VALUES (?, ?, ?)`,
-    [date, detailsStr, total],
-    function(err) {
-      if (err) {
-        return res.status(500).send(err.message);
-      }
-      res.status(200).send({ id: this.lastID });
+  client.query(`
+    INSERT INTO records (date, details, total) VALUES ($1, $2, $3) RETURNING id
+  `, [date, detailsStr, total], (err, result) => {
+    if (err) {
+      return res.status(500).send(err.message);
     }
-  );
+    res.status(200).send({ id: result.rows[0].id });
+  });
 });
 
 // API to get records
 app.get('/api/records', (req, res) => {
-  db.all(`SELECT * FROM records`, (err, rows) => {
+  client.query('SELECT * FROM records', (err, result) => {
     if (err) {
       return res.status(500).send(err.message);
     }
-    const records = rows.map(row => ({
+    const records = result.rows.map(row => ({
       ...row,
       details: JSON.parse(row.details)
     }));
