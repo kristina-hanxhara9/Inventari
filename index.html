@@ -178,110 +178,155 @@
             { product: "Uje", price: 1.5 },
         ];
 
-        // Add 10 empty rows
-        const emptyRows = Array.from({ length: 10 }, () => ({ product: "", price: 0 }));
 
-        // Combine the main product list with empty rows
-        const allProducts = [...products, ...emptyRows];
-        let records = [];
+    // Add 10 empty rows
+    const emptyRows = Array.from({ length: 10 }, () => ({ product: "", price: 0 }));
 
-        const productTable = document.getElementById("productTable");
-        const dailyTotalDisplay = document.getElementById("dailyTotal");
-        const recordTable = document.getElementById("recordTable");
+    // Combine the main product list with empty rows
+    const allProducts = [...products, ...emptyRows];
+    let records = [];
 
-        const editModal = document.getElementById("editModal");
-        const overlay = document.getElementById("overlay");
-        const editTableBody = document.getElementById("editTableBody");
+    const productTable = document.getElementById("productTable");
+    const dailyTotalDisplay = document.getElementById("dailyTotal");
+    const recordTable = document.getElementById("recordTable");
+    const editModal = document.getElementById("editModal");
+    const overlay = document.getElementById("overlay");
+    const editTableBody = document.getElementById("editTableBody");
 
-        // Update the product table
-        function updateProductTable() {
-            productTable.innerHTML = '';
-            allProducts.forEach((product, index) => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>
-                        <input type="text" value="${product.product}" id="product-${index}" placeholder="Produkt">
-                    </td>
-                    <td>
-                        <input type="number" value="${product.price}" id="price-${index}" min="0" step="0.01" onchange="updateDailyTotal()">
-                    </td>
-                    <td>
-                        <input type="number" value="0" id="quantity-${index}" min="0" step="1" onchange="updateDailyTotal()">
-                    </td>
-                    <td id="total-${index}">L0.00</td>
-                `;
-                productTable.appendChild(row);
-            });
-        }
-
-        // Update the daily total cost
-        function updateDailyTotal() {
-            let total = 0;
-            allProducts.forEach((product, index) => {
-                const productName = document.getElementById(`product-${index}`).value;
-                const productPrice = parseFloat(document.getElementById(`price-${index}`).value) || 0;
-                const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
-                const totalCost = productPrice * quantity;
-
-                // Update product details and the total cost
-                allProducts[index].product = productName;
-                allProducts[index].price = productPrice;
-                document.getElementById(`total-${index}`).textContent = `L${totalCost.toFixed(2)}`;
-                total += totalCost;
-            });
-            dailyTotalDisplay.textContent = total.toFixed(2);
-        }
-
-        // Save the current record
-        function saveRecord() {
-            const date = new Date().toLocaleDateString();
-            const details = allProducts.map((product, index) => {
-                const productName = document.getElementById(`product-${index}`).value;
-                const productPrice = parseFloat(document.getElementById(`price-${index}`).value) || 0;
-                const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
-                const totalCost = productPrice * quantity;
-                return `${productName}: ${quantity} x L${productPrice.toFixed(2)} = L${totalCost.toFixed(2)}`;
-            }).join("<br>");
-            const total = dailyTotalDisplay.textContent;
-
-            records.push({ date, details, total });
+    // Fetch records from the server
+    async function fetchRecords() {
+        try {
+            const response = await fetch('/api/records');
+            const fetchedRecords = await response.json();
+            records = fetchedRecords;
             updateRecordTable();
+        } catch (error) {
+            console.error('Error fetching records:', error);
         }
+    }
 
-        // Update the record table
-        function updateRecordTable() {
-            recordTable.innerHTML = '';
-            records.forEach((record, index) => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${record.date}</td>
-                    <td>${record.details}</td>
-                    <td>L${parseFloat(record.total).toFixed(2)}</td>
-                    <td>
-                        <button onclick="editRecord(${index})">Edit</button>
-                        <button onclick="deleteRecord(${index})">Delete</button>
-                    </td>
-                `;
-                recordTable.appendChild(row);
-            });
+    // Update the product table
+    function updateProductTable() {
+        productTable.innerHTML = '';
+        allProducts.forEach((product, index) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>
+                    <input type="text" value="${product.product}" id="product-${index}" placeholder="Produkt">
+                </td>
+                <td>
+                    <input type="number" value="${product.price}" id="price-${index}" min="0" step="0.01" onchange="updateDailyTotal()">
+                </td>
+                <td>
+                    <input type="number" value="0" id="quantity-${index}" min="0" step="1" onchange="updateDailyTotal()">
+                </td>
+                <td id="total-${index}">L0.00</td>
+            `;
+            productTable.appendChild(row);
+        });
+    }
+
+    function updateDailyTotal() {
+    let total = 0;
+
+    allProducts.forEach((product, index) => {
+        const productName = document.getElementById(`product-${index}`).value.trim();
+        const productPrice = parseFloat(document.getElementById(`price-${index}`).value) || 0;
+        const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
+        const totalCost = productPrice * quantity;
+
+        if (productName && productPrice > 0 && quantity > 0) {
+            document.getElementById(`total-${index}`).textContent = `L${totalCost.toFixed(2)}`;
+            total += totalCost;
+        } else {
+            document.getElementById(`total-${index}`).textContent = "L0.00";
         }
+    });
 
-        // Export records to CSV
-        function exportToCSV() {
-            let csvContent = "Date,Details,Total\n";
-            records.forEach(record => {
-                csvContent += `${record.date},"${record.details}",${record.total}\n`;
-            });
+    dailyTotalDisplay.textContent = total.toFixed(2);
+}
 
-            const blob = new Blob([csvContent], { type: "text/csv" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "daily_records.csv";
-            a.click();
-        }
+async function saveRecord() {
+    const date = new Date().toLocaleDateString();
+    const details = allProducts
+        .map((product, index) => {
+            const productName = document.getElementById(`product-${index}`).value.trim();
+            const productPrice = parseFloat(document.getElementById(`price-${index}`).value) || 0;
+            const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
+            const totalCost = productPrice * quantity;
 
-        updateProductTable();
-    </script>
+            if (productName && quantity > 0 && totalCost > 0) {
+                return { product: productName, quantity, totalCost };
+            }
+        })
+        .filter(detail => detail); // Filter out invalid entries
+
+    const total = details.reduce((acc, curr) => acc + curr.totalCost, 0);
+
+    if (details.length === 0) {
+        alert("No valid records to save!");
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/records', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date, details, total }),
+        });
+
+        const newRecord = await response.json();
+        records.push(newRecord);
+        updateRecordTable();
+    } catch (error) {
+        console.error('Error saving record:', error);
+    }
+}
+
+
+    // Update the record table
+    function updateRecordTable() {
+        recordTable.innerHTML = '';
+        records.forEach((record, index) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${record.date}</td>
+                <td>${formatDetails(record.details)}</td>
+                <td>L${parseFloat(record.total).toFixed(2)}</td>
+                <td>
+                    <button onclick="editRecord(${index})">Edit</button>
+                    <button onclick="deleteRecord(${index})">Delete</button>
+                </td>
+            `;
+            recordTable.appendChild(row);
+        });
+    }
+
+    // Format the details for display
+    function formatDetails(details) {
+        return details.map(detail => 
+            `${detail.product}: ${detail.quantity} x L${detail.totalCost.toFixed(2)}`
+        ).join("<br>");
+    }
+
+    // Export records to CSV
+    function exportToCSV() {
+        let csvContent = "Date,Details,Total\n";
+        records.forEach(record => {
+            csvContent += `${record.date},"${formatDetails(record.details)}",${record.total}\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "daily_records.csv";
+        a.click();
+    }
+
+    updateProductTable();
+    fetchRecords(); // Fetch records when the page loads
+</script>
+
 </body>
 </html>

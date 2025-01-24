@@ -1,12 +1,14 @@
 const express = require('express');
 const app = express();
-const sqlite3 = require('sqlite3').verbose();  // Import SQLite package
+const sqlite3 = require('sqlite3').verbose(); // Import SQLite package
 const path = require('path');
 
-app.use(express.json());  // Built-in Express middleware for JSON parsing
+// Middleware to parse JSON requests
+app.use(express.json());
+// Serve static files from the root directory
 app.use(express.static(path.join(__dirname)));
 
-// Set up SQLite database connection
+// Initialize SQLite database connection
 const db = new sqlite3.Database('./database.db', (err) => {
   if (err) {
     console.error('Error opening database:', err.message);
@@ -15,50 +17,66 @@ const db = new sqlite3.Database('./database.db', (err) => {
   }
 });
 
-// Create table if it doesn't exist
-db.run(`
+// Create "records" table if it doesn't exist
+db.run(
+  `
   CREATE TABLE IF NOT EXISTS records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT,
     details TEXT,
     total REAL
   )
-`, (err) => {
-  if (err) {
-    console.error('Error creating table:', err);
+  `,
+  (err) => {
+    if (err) {
+      console.error('Error creating table:', err);
+    }
   }
-});
+);
 
-// API to save a record
+// API endpoint to save a new record
 app.post('/api/records', (req, res) => {
   const { date, details, total } = req.body;
-  const detailsStr = JSON.stringify(details);
 
-  db.run(`
+  // Validate the incoming data
+  if (!date || !Array.isArray(details) || typeof total !== 'number') {
+    return res.status(400).send({ error: 'Invalid request data' });
+  }
+
+  const detailsStr = JSON.stringify(details); // Convert details to a string for storage
+
+  db.run(
+    `
     INSERT INTO records (date, details, total) VALUES (?, ?, ?)
-  `, [date, detailsStr, total], function (err) {
-    if (err) {
-      return res.status(500).send(err.message);
+    `,
+    [date, detailsStr, total],
+    function (err) {
+      if (err) {
+        console.error('Error inserting record:', err.message);
+        return res.status(500).send({ error: 'Database error' });
+      }
+      res.status(200).send({ id: this.lastID, date, details, total });
     }
-    res.status(200).send({ id: this.lastID });
-  });
+  );
 });
 
-// API to get records
+// API endpoint to fetch all records
 app.get('/api/records', (req, res) => {
   db.all('SELECT * FROM records', (err, rows) => {
     if (err) {
-      return res.status(500).send(err.message);
+      console.error('Error fetching records:', err.message);
+      return res.status(500).send({ error: 'Database error' });
     }
-    const records = rows.map(row => ({
+    // Parse the "details" column back to JSON before sending the response
+    const records = rows.map((row) => ({
       ...row,
-      details: JSON.parse(row.details)
+      details: JSON.parse(row.details),
     }));
     res.status(200).send(records);
   });
 });
 
-// Serve the HTML file
+// Serve the main HTML file
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
