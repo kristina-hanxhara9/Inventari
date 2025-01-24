@@ -1,6 +1,7 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const axios = require('axios'); // Import axios for making external requests
 const app = express();
 
 // Middleware to parse JSON requests
@@ -34,7 +35,7 @@ db.run(
 );
 
 // API endpoint to save a new record
-app.post('/api/records', (req, res) => {
+app.post('/api/records', async (req, res) => {
   const { date, details, total } = req.body;
 
   // Validate request data
@@ -44,48 +45,33 @@ app.post('/api/records', (req, res) => {
 
   const detailsStr = JSON.stringify(details); // Store details as a JSON string
 
-  db.run(
-    `INSERT INTO records (date, details, total) VALUES (?, ?, ?)`,
-    [date, detailsStr, total],
-    function (err) {
-      if (err) {
-        console.error('Error inserting record:', err.message);
-        return res.status(500).send({ error: 'Database error' });
-      }
-      // Send the newly created record with the last inserted ID
-      res.status(201).send({ id: this.lastID, date, details, total });
-    }
-  );
-});
-
-// API endpoint to fetch all records
-app.get('/api/records', (req, res) => {
-  db.all('SELECT * FROM records', (err, rows) => {
-    if (err) {
-      console.error('Error fetching records:', err.message);
-      return res.status(500).send({ error: 'Database error' });
-    }
-
-    const records = rows.map((row) => {
-      let details;
-      try {
-        details = JSON.parse(row.details); // Parse details as JSON array
-        if (!Array.isArray(details)) {
-          throw new Error("Details is not an array");
-        }
-      } catch (parseError) {
-        console.error('Error parsing details field:', parseError.message);
-        details = []; // Fallback to an empty array if parsing fails
-      }
-
-      return {
-        ...row,
-        details, // Return the parsed details
-      };
+  // Send the record to the external API
+  try {
+    const response = await axios.post('https://inventari-okqu.onrender.com/api/records', {
+      date,
+      details,
+      total,
     });
 
-    res.status(200).send(records); // Send all the records with parsed details
-  });
+    // Handle successful response from external API
+    res.status(201).send(response.data); // Forward the response from the external API
+  } catch (error) {
+    console.error('Error inserting record:', error.message);
+    return res.status(500).send({ error: 'Failed to save record to external API' });
+  }
+});
+
+// API endpoint to fetch all records from the external API
+app.get('/api/records', async (req, res) => {
+  try {
+    const response = await axios.get('https://inventari-okqu.onrender.com/api/records');
+    
+    // Send the fetched records from the external API
+    res.status(200).send(response.data);
+  } catch (error) {
+    console.error('Error fetching records:', error.message);
+    return res.status(500).send({ error: 'Failed to fetch records from external API' });
+  }
 });
 
 // Serve the main HTML file
