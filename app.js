@@ -52,6 +52,7 @@ app.post('/api/records', (req, res) => {
         console.error('Error inserting record:', err.message);
         return res.status(500).send({ error: 'Database error' });
       }
+      // Send the newly created record with the last inserted ID
       res.status(201).send({ id: this.lastID, date, details, total });
     }
   );
@@ -65,22 +66,25 @@ app.get('/api/records', (req, res) => {
       return res.status(500).send({ error: 'Database error' });
     }
 
-    // Ensure details field is parsed correctly
     const records = rows.map((row) => {
       let details;
       try {
         details = JSON.parse(row.details); // Parse details as JSON array
+        if (!Array.isArray(details)) {
+          throw new Error("Details is not an array");
+        }
       } catch (parseError) {
         console.error('Error parsing details field:', parseError.message);
         details = []; // Fallback to an empty array if parsing fails
       }
+
       return {
         ...row,
         details, // Return the parsed details
       };
     });
 
-    res.status(200).send(records); // Send records back as an array
+    res.status(200).send(records); // Send all the records with parsed details
   });
 });
 
