@@ -178,6 +178,11 @@
             { product: "Uje", price: 1.5 },
         ];
 
+        // Add 10 empty rows
+        const emptyRows = Array.from({ length: 10 }, () => ({ product: "", price: 0 }));
+
+        // Combine the main product list with empty rows
+        const allProducts = [...products, ...emptyRows];
         let records = [];
 
         const productTable = document.getElementById("productTable");
@@ -188,39 +193,54 @@
         const overlay = document.getElementById("overlay");
         const editTableBody = document.getElementById("editTableBody");
 
-        // Helper function to update the table
+        // Update the product table
         function updateProductTable() {
             productTable.innerHTML = '';
-            products.forEach((product, index) => {
+            allProducts.forEach((product, index) => {
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td>${product.product}</td>
-                    <td><span>L${product.price.toFixed(2)}</span></td>
-                    <td><input type="number" value="1" min="0" step="1" id="quantity-${index}" onchange="updateDailyTotal()"></td>
+                    <td>
+                        <input type="text" value="${product.product}" id="product-${index}" placeholder="Produkt">
+                    </td>
+                    <td>
+                        <input type="number" value="${product.price}" id="price-${index}" min="0" step="0.01" onchange="updateDailyTotal()">
+                    </td>
+                    <td>
+                        <input type="number" value="0" id="quantity-${index}" min="0" step="1" onchange="updateDailyTotal()">
+                    </td>
                     <td id="total-${index}">L0.00</td>
                 `;
                 productTable.appendChild(row);
             });
         }
 
+        // Update the daily total cost
         function updateDailyTotal() {
             let total = 0;
-            products.forEach((product, index) => {
-                const quantity = document.getElementById(`quantity-${index}`).value;
-                const totalCost = product.price * quantity;
+            allProducts.forEach((product, index) => {
+                const productName = document.getElementById(`product-${index}`).value;
+                const productPrice = parseFloat(document.getElementById(`price-${index}`).value) || 0;
+                const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
+                const totalCost = productPrice * quantity;
+
+                // Update product details and the total cost
+                allProducts[index].product = productName;
+                allProducts[index].price = productPrice;
                 document.getElementById(`total-${index}`).textContent = `L${totalCost.toFixed(2)}`;
                 total += totalCost;
             });
             dailyTotalDisplay.textContent = total.toFixed(2);
         }
 
-        // Save record
+        // Save the current record
         function saveRecord() {
             const date = new Date().toLocaleDateString();
-            const details = products.map((product, index) => {
-                const quantity = document.getElementById(`quantity-${index}`).value;
-                const totalCost = product.price * quantity;
-                return `${product.product}: ${quantity} x L${product.price.toFixed(2)} = L${totalCost.toFixed(2)}`;
+            const details = allProducts.map((product, index) => {
+                const productName = document.getElementById(`product-${index}`).value;
+                const productPrice = parseFloat(document.getElementById(`price-${index}`).value) || 0;
+                const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
+                const totalCost = productPrice * quantity;
+                return `${productName}: ${quantity} x L${productPrice.toFixed(2)} = L${totalCost.toFixed(2)}`;
             }).join("<br>");
             const total = dailyTotalDisplay.textContent;
 
@@ -228,7 +248,7 @@
             updateRecordTable();
         }
 
-        // Update record table
+        // Update the record table
         function updateRecordTable() {
             recordTable.innerHTML = '';
             records.forEach((record, index) => {
@@ -246,13 +266,7 @@
             });
         }
 
-        // Delete record
-        function deleteRecord(index) {
-            records.splice(index, 1);
-            updateRecordTable();
-        }
-
-        // Export to CSV
+        // Export records to CSV
         function exportToCSV() {
             let csvContent = "Date,Details,Total\n";
             records.forEach(record => {
@@ -265,44 +279,6 @@
             a.href = url;
             a.download = "daily_records.csv";
             a.click();
-        }
-
-        // Edit record
-        function editRecord(index) {
-            const record = records[index];
-            editTableBody.innerHTML = record.details.split("<br>").map(detail => {
-                const [product, quantityStr, , priceStr, totalCostStr] = detail.split(":");
-                return `
-                    <tr>
-                        <td>${product}</td>
-                        <td>${priceStr}</td>
-                        <td><input type="number" value="${quantityStr}" min="0" step="1" onchange="updateEditTotal(${index})"></td>
-                        <td>${totalCostStr}</td>
-                    </tr>
-                `;
-            }).join("");
-            overlay.style.display = "block";
-            editModal.style.display = "block";
-        }
-
-        function updateEditTotal(index) {
-            let newTotal = 0;
-            const editRows = editTableBody.querySelectorAll("tr");
-            editRows.forEach((row, i) => {
-                const quantityInput = row.querySelector("input");
-                const quantity = quantityInput.value;
-                const productPrice = products[i].price;
-                const totalCost = quantity * productPrice;
-                newTotal += totalCost;
-                row.cells[3].textContent = `L${totalCost.toFixed(2)}`;
-            });
-            records[index].total = newTotal.toFixed(2);
-        }
-
-        // Close modal
-        function closeModal() {
-            overlay.style.display = "none";
-            editModal.style.display = "none";
         }
 
         updateProductTable();
