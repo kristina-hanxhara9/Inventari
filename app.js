@@ -1,11 +1,10 @@
 const express = require('express');
-const app = express();
-const sqlite3 = require('sqlite3').verbose(); // Import SQLite package
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const app = express();
 
 // Middleware to parse JSON requests
 app.use(express.json());
-// Serve static files from the root directory
 app.use(express.static(path.join(__dirname)));
 
 // Initialize SQLite database connection
@@ -22,14 +21,14 @@ db.run(
   `
   CREATE TABLE IF NOT EXISTS records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date TEXT,
-    details TEXT,
-    total REAL
+    date TEXT NOT NULL,
+    details TEXT NOT NULL,
+    total REAL NOT NULL
   )
   `,
   (err) => {
     if (err) {
-      console.error('Error creating table:', err);
+      console.error('Error creating table:', err.message);
     }
   }
 );
@@ -38,24 +37,20 @@ db.run(
 app.post('/api/records', (req, res) => {
   const { date, details, total } = req.body;
 
-  // Validate the incoming data
   if (!date || !Array.isArray(details) || typeof total !== 'number') {
     return res.status(400).send({ error: 'Invalid request data' });
   }
 
-  const detailsStr = JSON.stringify(details); // Convert details to a string for storage
-
+  const detailsStr = JSON.stringify(details);
   db.run(
-    `
-    INSERT INTO records (date, details, total) VALUES (?, ?, ?)
-    `,
+    `INSERT INTO records (date, details, total) VALUES (?, ?, ?)`,
     [date, detailsStr, total],
     function (err) {
       if (err) {
         console.error('Error inserting record:', err.message);
         return res.status(500).send({ error: 'Database error' });
       }
-      res.status(200).send({ id: this.lastID, date, details, total });
+      res.status(201).send({ id: this.lastID, date, details, total });
     }
   );
 });
@@ -67,7 +62,6 @@ app.get('/api/records', (req, res) => {
       console.error('Error fetching records:', err.message);
       return res.status(500).send({ error: 'Database error' });
     }
-    // Parse the "details" column back to JSON before sending the response
     const records = rows.map((row) => ({
       ...row,
       details: JSON.parse(row.details),
@@ -79,6 +73,12 @@ app.get('/api/records', (req, res) => {
 // Serve the main HTML file
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send({ error: 'Something went wrong!' });
 });
 
 // Start the server
