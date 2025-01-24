@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Cost Calculator</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        input, button { margin: 10px 5px; padding: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
+        th { background-color: #f4f4f4; }
+        .scrollable { max-height: 400px; overflow-y: auto; display: block; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -20%);
+            background: white;
+            border: 1px solid #ccc;
+            padding: 20px;
+            z-index: 1000;
+        }
+        .modal button { margin: 5px; }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+        @media (max-width: 600px) {
+            table { font-size: 14px; }
+            input, button { margin: 5px 0; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Daily Cost Calculator</h1>
+
+    <h2>Products</h2>
+    <div class="scrollable">
+        <table>
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Price (per unit)</th>
+                    <th>Quantity</th>
+                    <th>Total Cost</th>
+                </tr>
+            </thead>
+            <tbody id="productTable"></tbody>
+        </table>
+    </div>
+
+    <h3>Total Daily Cost: L<span id="dailyTotal">0.00</span></h3>
+    <button onclick="saveRecord()">Save Daily Record</button>
+
+    <h2>Daily Records</h2>
+    <button onclick="exportToCSV()">Export to CSV</button>
+    <div class="scrollable">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Details</th>
+                    <th>Total</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="recordTable"></tbody>
+        </table>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <h3>Edit Record</h3>
+        <div class="scrollable">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th>Total Cost</th>
+                    </tr>
+                </thead>
+                <tbody id="editTableBody"></tbody>
+            </table>
+        </div>
+        <button onclick="saveEdit()">Save Changes</button>
+        <button onclick="closeModal()">Cancel</button>
+    </div>
+    <div id="overlay" class="overlay"></div>
+
+    <script>
+        const products = [
+            { product: "Ekmek", price: 1.5 },
+            { product: "Torte", price: 12.000 },
+            { product: "Torte", price: 10.000 },
+            { product: "Zupa", price: 1.000 },
+            { product: "Zupa", price: 1.200 },
+            { product: "Trilece", price: 5.000 },
+            { product: "Trilece", price: 1.500 },
+            { product: "Trilece", price: 7.000 },
+            { product: "Kausha", price: 10.000 },
+            { product: "Peta", price: 1.000 },
+            { product: "Peta e madhe", price: 12.000 },
+            { product: "Rulon", price: 10.000 },
+            { product: "Pastashu", price: 1.000 },
+            { product: "Pastashu", price: 1.200 },
+            { product: "Kompeka", price: 10.000 },
+            { product: "Revani", price: 1.5 },
+            { product: "Hashure", price: 12.000 },
+            { product: "Bakllava", price: 10.000 },
+            { product: "Torte racion", price: 1.5 },
+            { product: "Porcione", price: 12.000 },
+            { product: "Torte", price: 10.000 },
+            { product: "Tolluma", price: 1.5 },
+            { product: "Buke franxholla", price: 12.000 },
+            { product: "Franxholla", price: 6.000 },
+            { product: "Buke me topa", price: 10.000 },
+            { product: "Buke masive", price: 1.5 },
+            { product: "Buke me fara", price: 12.000 },
+            { product: "Buke fshati", price: 10.000 },
+            { product: "Buke e rrumbullaket", price: 1.5 },
+            { product: "Buke e gjate", price: 12.000 },
+            { product: "Kulac", price: 6.000 },
+            { product: "Buke me ullinj", price: 12.000 },
+            { product: "Buke e verdhe", price: 6.000 },
+            { product: "Buke integrale", price: 10.000 },
+            { product: "Buke Bogeti", price: 1.5 },
+            { product: "Buke misri", price: 12.000 },
+            { product: "Buke thekre", price: 10.000 },
+            { product: "Pite", price: 1.5 },
+            { product: "Simite", price: 12.000 },
+            { product: "Sanduic", price: 6.000 },
+            { product: "Sanduic me fara", price: 12.000 },
+            { product: "Sanduic i verdhe", price: 6.000 },
+            { product: "Briosh", price: 10.000 },
+            { product: "Donat", price: 1.5 },
+            { product: "Byrek", price: 5.00 },
+            { product: "Byrek", price: 7.00 },
+            { product: "Pica", price: 1.5 },
+            { product: "Kos 380gr", price: 12.000 },
+            { product: "Kos bidon", price: 6.000 },
+            { product: "Kos i madh", price: 12.000 },
+            { product: "Kos 200", price: 6.000 },
+            { product: "Dhalle bidon", price: 10.000 },
+            { product: "Dhalle karton", price: 1.5 },
+            { product: "Wumesht bidon", price: 12.000 },
+            { product: "Salce kosi 900gr", price: 10.000 },
+            { product: "Salce kosi 450gr", price: 1.5 },
+            { product: "Kos frutash", price: 12.000 },
+            { product: "Boze", price: 6.000 },
+            { product: "Uje Bukanik 7kg", price: 12.000 },
+            { product: "Uje Bukanik 1.5kg", price: 6.000 },
+            { product: "U Bukanik vgl", price: 12.000 },
+            { product: "U Lajthiza 5kg", price: 6.000 },
+            { product: "U Lajthiza 2kg", price: 10.000 },
+            { product: "U Lajthiza 1.5kg", price: 1.5 },
+            { product: "U Lajthiza vgl", price: 12.000 },
+            { product: "U Tepelena 5kg", price: 10.000 },
+            { product: "U Tepelena 1.5kg", price: 1.5 },
+            { product: "Tepelena vgl", price: 12.000 },
+            { product: "Kola Bidon 1.5 kg", price: 6.000 },
+            { product: "Kola Bidon 1 kg", price: 1.5 },
+            { product: "Kola vgl", price: 12.000 },
+            { product: "Monster", price: 10.000 },
+            { product: "Uje vitamina", price: 1.5 },
+            { product: "Boze natyrale", price: 12.000 },
+            { product: "Qumet", price: 6.000 },
+            { product: "Uje", price: 1.5 },
+        ];
+
+        let records = [];
+
+        const productTable = document.getElementById("productTable");
+        const dailyTotalDisplay = document.getElementById("dailyTotal");
+        const recordTable = document.getElementById("recordTable");
+
+        const editModal = document.getElementById("editModal");
+        const overlay = document.getElementById("overlay");
+        const editTableBody = document.getElementById("editTableBody");
+
+        // Helper function to update the table
+        function updateProductTable() {
+            productTable.innerHTML = '';
+            products.forEach((product, index) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${product.product}</td>
+                    <td><span>L${product.price.toFixed(2)}</span></td>
+                    <td><input type="number" value="1" min="0" step="1" id="quantity-${index}" onchange="updateDailyTotal()"></td>
+                    <td id="total-${index}">L0.00</td>
+                `;
+                productTable.appendChild(row);
+            });
+        }
+
+        function updateDailyTotal() {
+            let total = 0;
+            products.forEach((product, index) => {
+                const quantity = document.getElementById(`quantity-${index}`).value;
+                const totalCost = product.price * quantity;
+                document.getElementById(`total-${index}`).textContent = `L${totalCost.toFixed(2)}`;
+                total += totalCost;
+            });
+            dailyTotalDisplay.textContent = total.toFixed(2);
+        }
+
+        // Save record
+        function saveRecord() {
+            const date = new Date().toLocaleDateString();
+            const details = products.map((product, index) => {
+                const quantity = document.getElementById(`quantity-${index}`).value;
+                const totalCost = product.price * quantity;
+                return `${product.product}: ${quantity} x L${product.price.toFixed(2)} = L${totalCost.toFixed(2)}`;
+            }).join("<br>");
+            const total = dailyTotalDisplay.textContent;
+
+            records.push({ date, details, total });
+            updateRecordTable();
+        }
+
+        // Update record table
+        function updateRecordTable() {
+            recordTable.innerHTML = '';
+            records.forEach((record, index) => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${record.date}</td>
+                    <td>${record.details}</td>
+                    <td>L${parseFloat(record.total).toFixed(2)}</td>
+                    <td>
+                        <button onclick="editRecord(${index})">Edit</button>
+                        <button onclick="deleteRecord(${index})">Delete</button>
+                    </td>
+                `;
+                recordTable.appendChild(row);
+            });
+        }
+
+        // Delete record
+        function deleteRecord(index) {
+            records.splice(index, 1);
+            updateRecordTable();
+        }
+
+        // Export to CSV
+        function exportToCSV() {
+            let csvContent = "Date,Details,Total\n";
+            records.forEach(record => {
+                csvContent += `${record.date},"${record.details}",${record.total}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "daily_records.csv";
+            a.click();
+        }
+
+        // Edit record
+        function editRecord(index) {
+            const record = records[index];
+            editTableBody.innerHTML = record.details.split("<br>").map(detail => {
+                const [product, quantityStr, , priceStr, totalCostStr] = detail.split(":");
+                return `
+                    <tr>
+                        <td>${product}</td>
+                        <td>${priceStr}</td>
+                        <td><input type="number" value="${quantityStr}" min="0" step="1" onchange="updateEditTotal(${index})"></td>
+                        <td>${totalCostStr}</td>
+                    </tr>
+                `;
+            }).join("");
+            overlay.style.display = "block";
+            editModal.style.display = "block";
+        }
+
+        function updateEditTotal(index) {
+            let newTotal = 0;
+            const editRows = editTableBody.querySelectorAll("tr");
+            editRows.forEach((row, i) => {
+                const quantityInput = row.querySelector("input");
+                const quantity = quantityInput.value;
+                const productPrice = products[i].price;
+                const totalCost = quantity * productPrice;
+                newTotal += totalCost;
+                row.cells[3].textContent = `L${totalCost.toFixed(2)}`;
+            });
+            records[index].total = newTotal.toFixed(2);
+        }
+
+        // Close modal
+        function closeModal() {
+            overlay.style.display = "none";
+            editModal.style.display = "none";
+        }
+
+        updateProductTable();
+    </script>
+</body>
+</html>
