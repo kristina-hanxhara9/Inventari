@@ -246,63 +246,54 @@
         }
 
         // Save the current record
-        async function saveRecord() {
-            const date = new Date().toLocaleDateString();
-            const details = allProducts
-                .map((product, index) => {
-                    const productName = document.getElementById(`product-${index}`).value.trim();
-                    const productPrice = parseFloat(document.getElementById(`price-${index}`).value) || 0;
-                    const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
-                    const totalCost = productPrice * quantity;
+async function saveRecord() {
+    const date = new Date().toLocaleDateString();
+    const details = allProducts
+        .map((product, index) => {
+            const productName = document.getElementById(`product-${index}`).value.trim();
+            const productPrice = parseFloat(document.getElementById(`price-${index}`).value) || 0;
+            const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
+            const totalCost = productPrice * quantity;
 
-                    if (productName && quantity > 0 && totalCost > 0) {
-                        return { product: productName, quantity, totalCost };
-                    }
-                })
-                .filter(detail => detail);
-
-            const total = details.reduce((acc, curr) => acc + curr.totalCost, 0);
-
-            if (details.length === 0) {
-                alert("No valid records to save!");
-                return;
+            if (productName && quantity > 0 && totalCost > 0) {
+                return { product: productName, quantity, totalCost };
             }
+        })
+        .filter(detail => detail);
 
-            try {
-                const response = await fetch('/api/records', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ date, details, total }),
-                });
+    const total = details.reduce((acc, curr) => acc + curr.totalCost, 0);
 
-                if (!response.ok) throw new Error('Failed to save record');
-                const newRecord = await response.json();
-                records.push(newRecord);
-                updateRecordTable();
-                alert('Record saved successfully!');
-            } catch (error) {
-                console.error('Error saving record:', error);
-                alert('Failed to save record!');
-            }
-        }
+    if (details.length === 0) {
+        alert("No valid records to save!");
+        return;
+    }
 
-        // Update the record table
-        function updateRecordTable() {
-            recordTable.innerHTML = '';
-            records.forEach((record, index) => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${record.date}</td>
-                    <td>${formatDetails(record.details)}</td>
-                    <td>L${parseFloat(record.total).toFixed(2)}</td>
-                    <td>
-                        <button onclick="editRecord(${index})">Edit</button>
-                        <button onclick="deleteRecord(${index})">Delete</button>
-                    </td>
-                `;
-                recordTable.appendChild(row);
-            });
-        }
+    // Simulate saving to a server (for now, just add to the records array)
+    const newRecord = { date, details, total };
+    records.push(newRecord);
+    updateRecordTable(); // Update the table with new records
+
+    alert('Record saved successfully!');
+}
+
+
+       // Update the record table
+function updateRecordTable() {
+    recordTable.innerHTML = '';
+    records.forEach((record, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${record.date}</td>
+            <td>${formatDetails(record.details)}</td>
+            <td>L${parseFloat(record.total).toFixed(2)}</td>
+            <td>
+                <button onclick="editRecord(${index})">Edit</button>
+                <button onclick="deleteRecord(${index})">Delete</button>
+            </td>
+        `;
+        recordTable.appendChild(row);
+    });
+}
 
         // Format the details for display
         function formatDetails(details) {
