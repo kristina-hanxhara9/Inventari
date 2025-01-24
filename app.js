@@ -37,11 +37,13 @@ db.run(
 app.post('/api/records', (req, res) => {
   const { date, details, total } = req.body;
 
-  if (!date || !Array.isArray(details) || typeof total !== 'number') {
-    return res.status(400).send({ error: 'Invalid request data' });
+  // Validate request data
+  if (!date || !details || !Array.isArray(details) || typeof total !== 'number') {
+    return res.status(400).send({ error: 'Invalid request data: Ensure details is an array and total is a number' });
   }
 
-  const detailsStr = JSON.stringify(details);
+  const detailsStr = JSON.stringify(details); // Store details as a JSON string
+
   db.run(
     `INSERT INTO records (date, details, total) VALUES (?, ?, ?)`,
     [date, detailsStr, total],
@@ -62,11 +64,23 @@ app.get('/api/records', (req, res) => {
       console.error('Error fetching records:', err.message);
       return res.status(500).send({ error: 'Database error' });
     }
-    const records = rows.map((row) => ({
-      ...row,
-      details: JSON.parse(row.details),
-    }));
-    res.status(200).send(records);
+
+    // Ensure details field is parsed correctly
+    const records = rows.map((row) => {
+      let details;
+      try {
+        details = JSON.parse(row.details); // Parse details as JSON array
+      } catch (parseError) {
+        console.error('Error parsing details field:', parseError.message);
+        details = []; // Fallback to an empty array if parsing fails
+      }
+      return {
+        ...row,
+        details, // Return the parsed details
+      };
+    });
+
+    res.status(200).send(records); // Send records back as an array
   });
 });
 
