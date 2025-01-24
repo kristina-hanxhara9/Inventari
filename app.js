@@ -1,28 +1,24 @@
 const express = require('express');
 const app = express();
-const bodyParser = require('body-parser');
-const { Client } = require('pg');  // Importing pg package
+const sqlite3 = require('sqlite3').verbose();  // Import SQLite package
 const path = require('path');
-require('dotenv').config();  // Loads environment variables from a .env file
 
-app.use(bodyParser.json());
+app.use(express.json());  // Built-in Express middleware for JSON parsing
 app.use(express.static(path.join(__dirname)));
 
-// Set up PostgreSQL client with environment variables (DATABASE_URL from Render/Railway)
-const client = new Client({
-  connectionString: process.env.DATABASE_URL,  // PostgreSQL connection URL
-  ssl: {
-    rejectUnauthorized: false
+// Set up SQLite database connection
+const db = new sqlite3.Database('./database.db', (err) => {
+  if (err) {
+    console.error('Error opening database:', err.message);
+  } else {
+    console.log('Connected to SQLite database.');
   }
 });
 
-// Connect to PostgreSQL database
-client.connect();
-
 // Create table if it doesn't exist
-client.query(`
+db.run(`
   CREATE TABLE IF NOT EXISTS records (
-    id SERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT,
     details TEXT,
     total REAL
@@ -38,23 +34,23 @@ app.post('/api/records', (req, res) => {
   const { date, details, total } = req.body;
   const detailsStr = JSON.stringify(details);
 
-  client.query(`
-    INSERT INTO records (date, details, total) VALUES ($1, $2, $3) RETURNING id
-  `, [date, detailsStr, total], (err, result) => {
+  db.run(`
+    INSERT INTO records (date, details, total) VALUES (?, ?, ?)
+  `, [date, detailsStr, total], function (err) {
     if (err) {
       return res.status(500).send(err.message);
     }
-    res.status(200).send({ id: result.rows[0].id });
+    res.status(200).send({ id: this.lastID });
   });
 });
 
 // API to get records
 app.get('/api/records', (req, res) => {
-  client.query('SELECT * FROM records', (err, result) => {
+  db.all('SELECT * FROM records', (err, rows) => {
     if (err) {
       return res.status(500).send(err.message);
     }
-    const records = result.rows.map(row => ({
+    const records = rows.map(row => ({
       ...row,
       details: JSON.parse(row.details)
     }));
