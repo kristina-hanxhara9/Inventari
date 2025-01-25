@@ -244,7 +244,7 @@
             const total = details.reduce((sum, item) => sum + item.finalTotal, 0);
 
             try {
-                const response = await fetch('/api/records', {
+                const response = await fetch('http://localhost:3001/api/records', { // updated the port in fetch
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
