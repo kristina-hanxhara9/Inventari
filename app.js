@@ -30,23 +30,44 @@ app.post('/api/records', async (req, res) => {
         return res.status(400).send({ error: 'Invalid request data.' });
     }
 
-    const detailsStr = JSON.stringify(details);
-
-    db.run(
-        'INSERT INTO records (date, details, total) VALUES (?, ?, ?)',
-        [date, detailsStr, total],
-        async function (err) {
-            if (err) return res.status(500).send({ error: err.message });
-
-            try {
-                const apiResponse = await axios.post('https://inventari-okqu.onrender.com/api/records', { date, details, total });
-                res.status(201).send(apiResponse.data);
-            } catch (err) {
-                console.error(err.message);
-                res.status(500).send({ error: 'Failed to save record to external API.' });
+    try {
+        // Validate the structure of details
+        const parsedDetails = details.map(item => {
+            if (!item.productName || typeof item.totalCost !== 'number') {
+                throw new Error('Invalid details structure.');
             }
-        }
-    );
+
+            // Ensure First Part, Second Part, and Conclusion Total are included
+            return {
+                productName: item.productName,
+                totalCost: item.totalCost,
+                firstPart: item.firstPart || 0,
+                secondPart: item.secondPart || 0,
+                conclusionTotal: item.conclusionTotal || 0,
+            };
+        });
+
+        const detailsStr = JSON.stringify(parsedDetails);
+
+        // Save to SQLite
+        db.run(
+            'INSERT INTO records (date, details, total) VALUES (?, ?, ?)',
+            [date, detailsStr, total],
+            async function (err) {
+                if (err) return res.status(500).send({ error: err.message });
+
+                try {
+                    const apiResponse = await axios.post('https://inventari-okqu.onrender.com/api/records', { date, details, total });
+                    res.status(201).send(apiResponse.data);
+                } catch (err) {
+                    console.error(err.message);
+                    res.status(500).send({ error: 'Failed to save record to external API.' });
+                }
+            }
+        );
+    } catch (err) {
+        res.status(400).send({ error: err.message });
+    }
 });
 
 // API to fetch records
@@ -67,7 +88,7 @@ app.get('/api/records', (req, res) => {
 
 // Serve the HTML file
 app.get('/', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'index.html'));
+    res.sendFile(path.resolve(__dirname, 'index.html'));
 });
 
 // Start the server

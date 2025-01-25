@@ -25,10 +25,13 @@
         <table>
             <thead>
                 <tr>
-                    <th>Produkt</th>
+                    <th>Produktet</th>
                     <th>Cmimi (per cope)</th>
                     <th>Sasia</th>
-                    <th>Kosto Totale</th>
+                    <th>Kostoja Totale</th>
+                    <th>Pjesa e Pare e Dites</th>
+                    <th>Pjesa e Dyte e Dites</th>
+                    <th>Totali Përfundimtar</th>
                 </tr>
             </thead>
             <tbody id="productTable"></tbody>
@@ -141,99 +144,93 @@
 
         let records = [];
 
-        const productTable = document.getElementById("productTable");
-        const dailyTotalDisplay = document.getElementById("dailyTotal");
-        const recordTable = document.getElementById("recordTable");
+const productTable = document.getElementById("productTable");
+const dailyTotalDisplay = document.getElementById("dailyTotal");
 
-        // Initialize product table
-        function updateProductTable() {
-            productTable.innerHTML = '';
-            allProducts.forEach((product, index) => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${product.product}</td>
-                    <td>L${product.price.toFixed(2)}</td>
-                    <td><input type="number" id="quantity-${index}" value="0" min="0" step="1" onchange="updateDailyTotal()"></td>
-                    <td id="total-${index}">L0.00</td>
-                `;
-                productTable.appendChild(row);
-            });
+// Update the product table
+function updateProductTable() {
+    productTable.innerHTML = '';
+    allProducts.forEach((product, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td><input type="text" value="${product.product}" id="product-${index}" placeholder="Product"></td>
+            <td><input type="number" value="${product.price}" id="price-${index}" min="0" step="0.01" onchange="updateDailyTotal()"></td>
+            <td><input type="number" value="0" id="quantity-${index}" min="0" step="1" onchange="updateDailyTotal()"></td>
+            <td id="total-${index}">L0.00</td>
+            <td><input type="number" value="0" id="first-part-${index}" min="0" step="1" onchange="updateConclusion(${index})"></td>
+            <td><input type="number" value="0" id="second-part-${index}" min="0" step="1" onchange="updateConclusion(${index})"></td>
+            <td id="conclusion-${index}">L0.00</td>
+        `;
+        productTable.appendChild(row);
+    });
+}
+
+// Update the daily total and per-product totals
+function updateDailyTotal() {
+    let total = 0;
+    allProducts.forEach((product, index) => {
+        const productName = document.getElementById(`product-${index}`).value.trim();
+        const productPrice = parseFloat(document.getElementById(`price-${index}`).value) || 0;
+        const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
+        const totalCost = productPrice * quantity;
+
+        if (productName && productPrice > 0 && quantity > 0) {
+            document.getElementById(`total-${index}`).textContent = `L${totalCost.toFixed(2)}`;
+            total += totalCost;
+        } else {
+            document.getElementById(`total-${index}`).textContent = "L0.00";
         }
 
-        // Calculate daily total
-        function updateDailyTotal() {
-            let total = 0;
-            allProducts.forEach((product, index) => {
-                const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
-                const totalCost = product.price * quantity;
-                document.getElementById(`total-${index}`).textContent = `L${totalCost.toFixed(2)}`;
-                total += totalCost;
-            });
-            dailyTotalDisplay.textContent = total.toFixed(2);
-        }
+        // Reset first/second part and conclusion totals
+        document.getElementById(`first-part-${index}`).value = 0;
+        document.getElementById(`second-part-${index}`).value = 0;
+        document.getElementById(`conclusion-${index}`).textContent = "L0.00";
+    });
+    dailyTotalDisplay.textContent = total.toFixed(2);
+}
 
-        // Save daily record
-        async function saveRecord() {
-            const date = new Date().toLocaleDateString();
-            const details = allProducts.map((product, index) => {
-                const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
-                if (quantity > 0) {
-                    return { item: product.product, quantity, total: product.price * quantity };
-                }
-                return null;
-            }).filter(Boolean);
+// Update the conclusion total for each row
+function updateConclusion(index) {
+    const totalCost = parseFloat(document.getElementById(`total-${index}`).textContent.replace("L", "")) || 0;
+    const firstPart = parseInt(document.getElementById(`first-part-${index}`).value) || 0;
+    const secondPart = parseInt(document.getElementById(`second-part-${index}`).value) || 0;
 
-            if (details.length === 0) {
-                alert("No valid data to save!");
-                return;
+    const conclusionTotal = totalCost - firstPart - secondPart;
+
+    document.getElementById(`conclusion-${index}`).textContent = `L${conclusionTotal.toFixed(2)}`;
+}
+
+// Save the current record
+function saveRecord() {
+    const date = new Date().toLocaleDateString();
+    const details = allProducts
+        .map((product, index) => {
+            const productName = document.getElementById(`product-${index}`).value.trim();
+            const productPrice = parseFloat(document.getElementById(`price-${index}`).value) || 0;
+            const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
+            const totalCost = productPrice * quantity;
+            const firstPart = parseInt(document.getElementById(`first-part-${index}`).value) || 0;
+            const secondPart = parseInt(document.getElementById(`second-part-${index}`).value) || 0;
+            const conclusionTotal = totalCost - firstPart - secondPart;
+
+            if (productName && totalCost > 0) {
+                return { productName, totalCost, firstPart, secondPart, conclusionTotal };
             }
+        })
+        .filter(Boolean);
 
-            const total = details.reduce((sum, item) => sum + item.total, 0);
-            const record = { date, details, total };
+    if (details.length === 0) {
+        alert("No valid records to save!");
+        return;
+    }
 
-            try {
-                const response = await fetch('/api/records', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(record),
-                });
-                if (!response.ok) throw new Error("Failed to save record!");
-                records.push(await response.json());
-                alert("Record saved!");
-                updateRecordTable();
-            } catch (error) {
-                console.error("Error saving record:", error);
-            }
-        }
+    const total = details.reduce((sum, detail) => sum + detail.conclusionTotal, 0);
+    records.push({ date, details, total });
+    alert("Data saved successfully!");
+}
 
-        // Populate record table
-        function updateRecordTable() {
-            recordTable.innerHTML = records.map((record, index) => `
-                <tr>
-                    <td>${record.date}</td>
-                    <td>${record.details.map(d => `${d.item} (${d.quantity})`).join(", ")}</td>
-                    <td>L${record.total.toFixed(2)}</td>
-                    <td><button onclick="deleteRecord(${index})">Delete</button></td>
-                </tr>
-            `).join("");
-        }
-
-        // Export records to CSV
-        function exportToCSV() {
-            let csv = "Date,Details,Total\n";
-            records.forEach(record => {
-                const details = record.details.map(d => `${d.item} (${d.quantity})`).join(", ");
-                csv += `${record.date},"${details}",L${record.total.toFixed(2)}\n`;
-            });
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'records.csv';
-            link.click();
-        }
-
-        // Initialize on page load
-        updateProductTable();
-    </script>
+// Initialize the product table
+updateProductTable();
+</script>
 </body>
 </html>
