@@ -144,19 +144,19 @@
         const dailyTotalDisplay = document.getElementById("dailyTotal");
 
         function updateProductTable() {
-           productTable.innerHTML = '';
+            productTable.innerHTML = '';
             allProducts.forEach((product, index) => {
                 const row = document.createElement("tr");
-
+                 row.setAttribute('data-index', index);
                 // Only show non-empty products in the table
                 if (product.product) {
                     row.innerHTML = `
                         <td>${product.product}</td>
                         <td>${product.price.toFixed(2)}</td>
-                        <td><input type="number" value="0" class="quantity" data-index="${index}" /></td>
+                        <td><input type="number" value="0" class="quantity"/></td>
                         <td class="total-cost">0.00</td>
-                        <td><input type="number" value="0" class="first-part" data-index="${index}" /></td>
-                        <td><input type="number" value="0" class="second-part" data-index="${index}" /></td>
+                        <td><input type="number" value="0" class="first-part" /></td>
+                        <td><input type="number" value="0" class="second-part" /></td>
                         <td class="final-total">0.00</td>
                     `;
                     productTable.appendChild(row);
@@ -164,58 +164,76 @@
             });
 
             // Add event listeners for each input field to update the total cost
-            const inputs = document.querySelectorAll('input');
+            const inputs = productTable.querySelectorAll('input');
             inputs.forEach(input => {
                 input.addEventListener('input', updateDailyTotal);
             });
         }
 
 
-          function updateDailyTotal() {
-             let total = 0;
+        function updateDailyTotal(event) {
+            const row = event.target.closest('tr');
+              if (!row) return;
 
-              allProducts.forEach((product, index) => {
-                const quantityInput = document.querySelector(`input.quantity[data-index="${index}"]`);
-                const firstPartInput = document.querySelector(`input.first-part[data-index="${index}"]`);
-                const secondPartInput = document.querySelector(`input.second-part[data-index="${index}"]`);
-                  
+            const index = row.getAttribute('data-index');
+           if (index === null) return;
+
+
+             const product = allProducts[index];
+               if (!product) return;
+               
+               const quantityInput = row.querySelector('input.quantity');
+                const firstPartInput = row.querySelector('input.first-part');
+                const secondPartInput = row.querySelector('input.second-part');
+
+
                 const quantity = parseFloat(quantityInput.value) || 0;
                 const firstPart = parseFloat(firstPartInput.value) || 0;
                 const secondPart = parseFloat(secondPartInput.value) || 0;
 
-                 // Calculate the total cost as quantity * price
-                const totalCost = product.price * quantity;
+
+                // Calculate the total cost as quantity * price
+                 const totalCost = product.price * quantity;
 
                 // Update the total cost for the current row (Kostoja Totale)
-                const totalCostCell = document.querySelector(`td.total-cost[data-index="${index}"]`);
+                 const totalCostCell = row.querySelector('td.total-cost');
                  if(totalCostCell){
                       totalCostCell.textContent = totalCost.toFixed(2);
-                 }
-
-                 // Calculate the final total by adding additional parts
-                 const finalTotal = totalCost + parseFloat(firstPart) + parseFloat(secondPart);
-                const finalTotalCell = document.querySelector(`td.final-total[data-index="${index}"]`);
-                  if(finalTotalCell){
-                    finalTotalCell.textContent = finalTotal.toFixed(2);
                   }
 
-                // Add this to the overall total
-                 total += finalTotal;
-            });
+                // Calculate the final total by adding additional parts
+                const finalTotal = totalCost + firstPart + secondPart;
+                const finalTotalCell = row.querySelector('td.final-total');
+                 if(finalTotalCell){
+                      finalTotalCell.textContent = finalTotal.toFixed(2);
+                  }
 
-             // Update the daily total displayed at the top
+              let total = 0;
+            productTable.querySelectorAll('tr[data-index]').forEach(row => {
+                const rowIndex = row.getAttribute('data-index');
+                const finalTotalCell = row.querySelector('td.final-total');
+                   if (finalTotalCell && rowIndex !== null) {
+                       total += parseFloat(finalTotalCell.textContent) || 0;
+                   }
+           });
             dailyTotalDisplay.textContent = total.toFixed(2);
-          }
+            }
         async function saveRecord() {
             const date = new Date().toLocaleDateString();
-            const details = allProducts.map((product, index) => {
-                const quantityInput = document.querySelector(`input.quantity[data-index="${index}"]`);
-                const firstPartInput = document.querySelector(`input.first-part[data-index="${index}"]`);
-                const secondPartInput = document.querySelector(`input.second-part[data-index="${index}"]`);
+              const details = Array.from(productTable.querySelectorAll('tr[data-index]')).map(row => {
+                const index = row.getAttribute('data-index');
+                  if (index === null) return null;
+                const product = allProducts[index];
+                   if (!product) return null;
+
+               const quantityInput = row.querySelector('input.quantity');
+                const firstPartInput = row.querySelector('input.first-part');
+                const secondPartInput = row.querySelector('input.second-part');
 
                  const quantity = parseFloat(quantityInput.value) || 0;
                 const firstPart = parseFloat(firstPartInput.value) || 0;
                 const secondPart = parseFloat(secondPartInput.value) || 0;
+
 
                 const totalCost = product.price * quantity;
                 const finalTotal = totalCost + parseFloat(firstPart) + parseFloat(secondPart);
@@ -225,7 +243,7 @@
 
             const total = details.reduce((sum, item) => sum + item.finalTotal, 0);
 
-             try {
+            try {
                 const response = await fetch('/api/records', {
                     method: 'POST',
                     headers: {
@@ -236,18 +254,21 @@
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to save record.');
-                }
-
-                alert('Record saved successfully!');
+                    console.error("Server error", errorData);
+                    alert('Error saving the record. Please check the server logs for more details.');
+                   return;
+                 }
+                const responseData = await response.json();
+                  alert(responseData.message || 'Record saved successfully!');
             } catch (error) {
-                console.error(error);
+                console.error("Network error", error);
                  alert('Error saving the record. Please check the server logs for more details.');
-             }
-          }
+            }
+        }
 
 
-       updateProductTable();
+        updateProductTable();
     </script>
 </body>
 </html>
+
