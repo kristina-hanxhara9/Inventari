@@ -1,93 +1,75 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
+const axios = require('axios');
 const path = require('path');
-const axios = require('axios'); // Import axios for making external requests
 const app = express();
 
-// Middleware to parse JSON requests
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-// Initialize SQLite database connection
+// SQLite Database Initialization
 const db = new sqlite3.Database('./database.db', (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to SQLite database.');
-  }
+    if (err) console.error(err.message);
+    else console.log('Connected to SQLite database.');
 });
 
-// Create "records" table if it doesn't exist
-db.run(
-  `
-  CREATE TABLE IF NOT EXISTS records (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date TEXT NOT NULL,
-    details TEXT NOT NULL,
-    total REAL NOT NULL
-  )
-  `,
-  (err) => {
-    if (err) {
-      console.error('Error creating table:', err.message);
-    }
-  }
-);
+db.run(`
+    CREATE TABLE IF NOT EXISTS records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT,
+        details TEXT,
+        total REAL
+    )
+`);
 
-// API endpoint to save a new record
+// API to save records
 app.post('/api/records', async (req, res) => {
-  const { date, details, total } = req.body;
+    const { date, details, total } = req.body;
 
-  // Validate request data
-  if (!date || !details || !Array.isArray(details) || typeof total !== 'number') {
-    return res.status(400).send({ error: 'Invalid request data: Ensure details is an array and total is a number' });
-  }
+    if (!date || !details || typeof total !== 'number') {
+        return res.status(400).send({ error: 'Invalid request data.' });
+    }
 
-  const detailsStr = JSON.stringify(details); // Store details as a JSON string
+    const detailsStr = JSON.stringify(details);
 
-  // Send the record to the external API
-  try {
-    const response = await axios.post('https://inventari-okqu.onrender.com/api/records', {
-      date,
-      details,
-      total,
+    db.run(
+        'INSERT INTO records (date, details, total) VALUES (?, ?, ?)',
+        [date, detailsStr, total],
+        async function (err) {
+            if (err) return res.status(500).send({ error: err.message });
+
+            try {
+                const apiResponse = await axios.post('https://inventari-okqu.onrender.com/api/records', { date, details, total });
+                res.status(201).send(apiResponse.data);
+            } catch (err) {
+                console.error(err.message);
+                res.status(500).send({ error: 'Failed to save record to external API.' });
+            }
+        }
+    );
+});
+
+// API to fetch records
+app.get('/api/records', (req, res) => {
+    db.all('SELECT * FROM records', [], (err, rows) => {
+        if (err) return res.status(500).send({ error: err.message });
+
+        const records = rows.map(row => ({
+            id: row.id,
+            date: row.date,
+            details: JSON.parse(row.details),
+            total: row.total,
+        }));
+
+        res.status(200).send(records);
     });
-
-    // Handle successful response from external API
-    res.status(201).send(response.data); // Forward the response from the external API
-  } catch (error) {
-    console.error('Error inserting record:', error.message);
-    return res.status(500).send({ error: 'Failed to save record to external API' });
-  }
 });
 
-// Fetch records from external API with logging
-app.get('/api/records', async (req, res) => {
-  try {
-    console.log('Fetching records from external API...');
-    const response = await axios.get('https://inventari-okqu.onrender.com/api/records');
-    console.log('Received records:', response.data); // Log the response data
-    res.status(200).send(response.data);
-  } catch (error) {
-    console.error('Error fetching records from external API:', error.message);
-    console.error('Error response:', error.response ? error.response.data : 'No response data');
-    return res.status(500).send({ error: 'Failed to fetch records from external API' });
-  }
-});
-
-// Serve the main HTML file
+// Serve the HTML file
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send({ error: 'Something went wrong!' });
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // Start the server
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
