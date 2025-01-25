@@ -1,7 +1,6 @@
 {
   "name": "daja-calculator",
   "version": "1.0.0",
-  "description": "",
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
@@ -17,5 +16,14 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "sqlite3": "^5.1.7"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kristina-hanxhara9/Inventari.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kristina-hanxhara9/Inventari/issues"
+  },
+  "homepage": "https://github.com/kristina-hanxhara9/Inventari#readme",
+  "description": ""
 }

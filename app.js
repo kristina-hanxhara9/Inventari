@@ -1,89 +1,46 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const bodyParser = require('body-parser');
+const fs = require('fs').promises;
 const path = require('path');
-const cors = require('cors'); // For handling cross-origin requests
 
 const app = express();
+const PORT = 3000;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname, 'public'))); // Serve static files from the 'public' directory
+const recordsFilePath = path.join(__dirname, 'records.json');
 
-// Database setup
-const db = new sqlite3.Database('./database.db', (err) => {
-  if (err) {
-    console.error('Failed to connect to SQLite database:', err.message);
-  } else {
-    console.log('Connected to SQLite database.');
+app.post('/api/records', async (req, res) => {
+  try {
+    const record = req.body;
+
+    // Check if the file exists, create it if not.
+     try {
+        await fs.access(recordsFilePath);
+     } catch (error) {
+        await fs.writeFile(recordsFilePath, '[]', 'utf-8');
+     }
+
+    const data = await fs.readFile(recordsFilePath, 'utf-8');
+    const records = JSON.parse(data);
+    records.push(record);
+
+    await fs.writeFile(recordsFilePath, JSON.stringify(records, null, 2), 'utf-8');
+
+    res.status(201).json({ message: 'Record saved successfully' });
+  } catch (error) {
+    console.error('Error saving record:', error);
+    res.status(500).json({ error: 'Failed to save record' });
   }
 });
 
-db.run(
-  `CREATE TABLE IF NOT EXISTS records (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date TEXT,
-    details TEXT,
-    total REAL
-  )`,
-  (err) => {
-    if (err) {
-      console.error('Error creating database table:', err.message);
-    }
-  }
-);
 
-// API to save records
-app.post('/api/records', (req, res) => {
-  const { date, details, total } = req.body;
-
-  if (!date || !Array.isArray(details) || typeof total !== 'number') {
-    return res.status(400).json({ error: 'Invalid request payload. Ensure "date", "details" (array), and "total" (number) are provided.' });
-  }
-
-  db.run(
-    'INSERT INTO records (date, details, total) VALUES (?, ?, ?)',
-    [date, JSON.stringify(details), total],
-    function (err) {
-      if (err) {
-        return res.status(500).json({ error: 'Failed to save the record. ' + err.message });
-      }
-      res.status(201).json({ id: this.lastID });
-    }
-  );
-});
-
-// API to fetch all records
-app.get('/api/records', (req, res) => {
-  db.all('SELECT * FROM records', [], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: 'Failed to retrieve records. ' + err.message });
-    }
-
-    res.json(
-      rows.map((row) => ({
-        id: row.id,
-        date: row.date,
-        details: JSON.parse(row.details),
-        total: row.total,
-      }))
-    );
-  });
-});
-
-// Serve the main HTML file
+// Serve the HTML file
 app.get('/', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
 
-// Start the server
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
