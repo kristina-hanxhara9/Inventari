@@ -1,47 +1,80 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const fs = require("fs").promises;
+const fs = require("fs");
 const path = require("path");
 
 const app = express();
-const PORT = 3001; // Port set to 3001
+const PORT = 3001;
 
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public"))); // Serve static files
+app.use(express.static(path.join(__dirname, "public")));
+
 
 const recordsFilePath = path.join(__dirname, "data", "records.json");
 
-// API route to save records
-app.post("/api/records", async (req, res) => {
-    try {
-        const record = req.body;
 
-        // Ensure the data directory and file exist
-        try {
-            await fs.access(recordsFilePath);
-        } catch {
-            await fs.mkdir(path.dirname(recordsFilePath), { recursive: true });
-            await fs.writeFile(recordsFilePath, "[]");
+app.post("/api/records", (req, res) => {
+     const record = req.body;
+
+
+    fs.access(recordsFilePath, fs.constants.F_OK, (err) => {
+          if (err) {
+            fs.mkdir(path.dirname(recordsFilePath), { recursive: true }, (err) => {
+                if (err) {
+                    console.error("Error creating directory:", err);
+                    return res.status(500).json({ error: "Gabim gjatë ruajtjes së të dhënave." });
+                }
+                fs.writeFile(recordsFilePath, "[]", (err) => {
+                     if (err) {
+                         console.error("Error creating file:", err);
+                       return res.status(500).json({ error: "Gabim gjatë ruajtjes së të dhënave." });
+                  }
+                      fs.readFile(recordsFilePath, "utf8", (err, data) => {
+                          if (err) {
+                              console.error("Error reading file:", err);
+                              return res.status(500).json({ error: "Gabim gjatë ruajtjes së të dhënave." });
+                            }
+                            const records = JSON.parse(data);
+                            records.push(record);
+
+
+                            fs.writeFile(recordsFilePath, JSON.stringify(records, null, 2), (err) => {
+                                if (err) {
+                                    console.error("Error writing to file:", err);
+                                  return res.status(500).json({ error: "Gabim gjatë ruajtjes së të dhënave." });
+                                  }
+                                res.status(201).json({ message: "Të dhënat u ruajtën me sukses!" });
+                                });
+                        });
+                    });
+                });
+        } else {
+               fs.readFile(recordsFilePath, "utf8", (err, data) => {
+                        if (err) {
+                                  console.error("Error reading file:", err);
+                                   return res.status(500).json({ error: "Gabim gjatë ruajtjes së të dhënave." });
+                                 }
+                         const records = JSON.parse(data);
+                          records.push(record);
+
+
+                        fs.writeFile(recordsFilePath, JSON.stringify(records, null, 2), (err) => {
+                            if (err) {
+                                console.error("Error writing to file:", err);
+                                  return res.status(500).json({ error: "Gabim gjatë ruajtjes së të dhënave." });
+                             }
+                             res.status(201).json({ message: "Të dhënat u ruajtën me sukses!" });
+                             });
+                     });
         }
-
-        const data = await fs.readFile(recordsFilePath, "utf8");
-        const records = JSON.parse(data);
-        records.push(record);
-
-        await fs.writeFile(recordsFilePath, JSON.stringify(records, null, 2));
-        res.status(201).json({ message: "Të dhënat u ruajtën me sukses!" });
-    } catch (error) {
-        console.error("Error saving record:", error);
-        res.status(500).json({ error: "Gabim gjatë ruajtjes së të dhënave." });
-    }
+    });
 });
 
-// Serve the HTML page
+
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Start the server
 app.listen(PORT, () => {
     console.log(`Server running at http://localhost:${PORT}`);
 });
