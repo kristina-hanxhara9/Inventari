@@ -137,138 +137,86 @@
         ];
         const emptyRows = Array.from({ length: 10 }, () => ({ product: "", price: 0 }));
         const allProducts = [...products, ...emptyRows];
-        let records = [];
+     
 
         const productTable = document.getElementById("productTable");
-        const recordTable = document.getElementById("recordTable");
         const dailyTotalDisplay = document.getElementById("dailyTotal");
+        let records = [];
 
         function updateProductTable() {
-            productTable.innerHTML = '';
-            allProducts.forEach((product, index) => {
+            productTable.innerHTML = "";
+            products.forEach((product, index) => {
                 const row = document.createElement("tr");
-                 row.setAttribute('data-index', index);
-                // Only show non-empty products in the table
-                if (product.product) {
-                    row.innerHTML = `
-                        <td>${product.product}</td>
-                        <td>${product.price.toFixed(2)}</td>
-                        <td><input type="number" value="0" class="quantity"/></td>
-                        <td class="total-cost">0.00</td>
-                        <td><input type="number" value="0" class="first-part" /></td>
-                        <td><input type="number" value="0" class="second-part" /></td>
-                        <td class="final-total">0.00</td>
-                    `;
-                    productTable.appendChild(row);
-                }
+                row.innerHTML = `
+                    <td>${product.product}</td>
+                    <td>${product.price.toFixed(2)}</td>
+                    <td><input type="number" value="0" class="quantity" /></td>
+                    <td class="total-cost">0.00</td>
+                    <td><input type="number" value="0" class="first-part" /></td>
+                    <td><input type="number" value="0" class="second-part" /></td>
+                    <td class="final-total">0.00</td>
+                `;
+                productTable.appendChild(row);
             });
+            addInputListeners();
+        }
 
-            // Add event listeners for each input field to update the total cost
-            const inputs = productTable.querySelectorAll('input');
+        function addInputListeners() {
+            const inputs = productTable.querySelectorAll("input");
             inputs.forEach(input => {
-                input.addEventListener('input', updateDailyTotal);
+                input.addEventListener("input", calculateTotals);
             });
         }
 
+        function calculateTotals() {
+            let totalDailyCost = 0;
+            productTable.querySelectorAll("tr").forEach(row => {
+                const quantity = parseFloat(row.querySelector(".quantity").value) || 0;
+                const firstPart = parseFloat(row.querySelector(".first-part").value) || 0;
+                const secondPart = parseFloat(row.querySelector(".second-part").value) || 0;
+                const price = parseFloat(row.children[1].textContent);
 
-        function updateDailyTotal(event) {
-            const row = event.target.closest('tr');
-              if (!row) return;
-
-            const index = row.getAttribute('data-index');
-           if (index === null) return;
-
-
-             const product = allProducts[index];
-               if (!product) return;
-               
-               const quantityInput = row.querySelector('input.quantity');
-                const firstPartInput = row.querySelector('input.first-part');
-                const secondPartInput = row.querySelector('input.second-part');
-
-
-                const quantity = parseFloat(quantityInput.value) || 0;
-                const firstPart = parseFloat(firstPartInput.value) || 0;
-                const secondPart = parseFloat(secondPartInput.value) || 0;
-
-
-                // Calculate the total cost as quantity * price
-                 const totalCost = product.price * quantity;
-
-                // Update the total cost for the current row (Kostoja Totale)
-                 const totalCostCell = row.querySelector('td.total-cost');
-                 if(totalCostCell){
-                      totalCostCell.textContent = totalCost.toFixed(2);
-                  }
-
-                // Calculate the final total by adding additional parts
+                const totalCost = quantity * price;
                 const finalTotal = totalCost + firstPart + secondPart;
-                const finalTotalCell = row.querySelector('td.final-total');
-                 if(finalTotalCell){
-                      finalTotalCell.textContent = finalTotal.toFixed(2);
-                  }
 
-              let total = 0;
-            productTable.querySelectorAll('tr[data-index]').forEach(row => {
-                const rowIndex = row.getAttribute('data-index');
-                const finalTotalCell = row.querySelector('td.final-total');
-                   if (finalTotalCell && rowIndex !== null) {
-                       total += parseFloat(finalTotalCell.textContent) || 0;
-                   }
-           });
-            dailyTotalDisplay.textContent = total.toFixed(2);
-            }
+                row.querySelector(".total-cost").textContent = totalCost.toFixed(2);
+                row.querySelector(".final-total").textContent = finalTotal.toFixed(2);
+
+                totalDailyCost += finalTotal;
+            });
+            dailyTotalDisplay.textContent = totalDailyCost.toFixed(2);
+        }
+
         async function saveRecord() {
             const date = new Date().toLocaleDateString();
-              const details = Array.from(productTable.querySelectorAll('tr[data-index]')).map(row => {
-                const index = row.getAttribute('data-index');
-                  if (index === null) return null;
-                const product = allProducts[index];
-                   if (!product) return null;
+            const total = parseFloat(dailyTotalDisplay.textContent) || 0;
+            if (total <= 0) {
+                alert("Nuk ka të dhëna për të ruajtur!");
+                return;
+            }
 
-               const quantityInput = row.querySelector('input.quantity');
-                const firstPartInput = row.querySelector('input.first-part');
-                const secondPartInput = row.querySelector('input.second-part');
+            const details = Array.from(productTable.querySelectorAll("tr")).map(row => ({
+                product: row.children[0].textContent,
+                total: parseFloat(row.querySelector(".final-total").textContent) || 0,
+            }));
 
-                 const quantity = parseFloat(quantityInput.value) || 0;
-                const firstPart = parseFloat(firstPartInput.value) || 0;
-                const secondPart = parseFloat(secondPartInput.value) || 0;
-
-
-                const totalCost = product.price * quantity;
-                const finalTotal = totalCost + parseFloat(firstPart) + parseFloat(secondPart);
-
-                return finalTotal > 0 ? { product: product.product, quantity, firstPart, secondPart, totalCost, finalTotal } : null;
-            }).filter(Boolean);
-
-            const total = details.reduce((sum, item) => sum + item.finalTotal, 0);
+            const record = { date, details, total };
 
             try {
-                const response = await fetch('http://localhost:3001/api/records', { // updated the port in fetch
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ date, details, total }),
+                const response = await fetch("http://localhost:3001/api/records", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(record),
                 });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    console.error("Server error", errorData);
-                    alert('Error saving the record. Please check the server logs for more details.');
-                   return;
-                 }
-                const responseData = await response.json();
-                  alert(responseData.message || 'Record saved successfully!');
+                const result = await response.json();
+                alert(result.message || "Të dhënat u ruajtën me sukses!");
             } catch (error) {
-                console.error("Network error", error);
-                 alert('Error saving the record. Please check the server logs for more details.');
+                alert("Gabim gjatë ruajtjes së të dhënave.");
+                console.error(error);
             }
         }
-
 
         updateProductTable();
     </script>
 </body>
 </html>
-

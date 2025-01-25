@@ -1,9 +1,9 @@
 {
   "name": "daja-calculator",
   "version": "1.0.0",
-  "main": "app.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node app.js",
+    "start": "node server.js",
     "postinstall": "npm rebuild sqlite3"
   },
   "keywords": [],
@@ -25,5 +25,5 @@
     "url": "https://github.com/kristina-hanxhara9/Inventari/issues"
   },
   "homepage": "https://github.com/kristina-hanxhara9/Inventari#readme",
-  "description": ""
+  "description": "A simple inventory calculator app."
 }
