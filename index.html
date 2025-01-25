@@ -11,28 +11,6 @@
         th, td { border: 1px solid #ccc; padding: 10px; text-align: center; }
         th { background-color: #f4f4f4; }
         .scrollable { max-height: 400px; overflow-y: auto; display: block; }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 20%;
-            left: 50%;
-            transform: translate(-50%, -20%);
-            background: white;
-            border: 1px solid #ccc;
-            padding: 20px;
-            z-index: 1000;
-        }
-        .modal button { margin: 5px; }
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 999;
-            display: none;
-        }
         @media (max-width: 600px) {
             table { font-size: 14px; }
             input, button { margin: 5px 0; width: 100%; }
@@ -47,29 +25,29 @@
         <table>
             <thead>
                 <tr>
-                    <th>Produktet</th>
+                    <th>Produkt</th>
                     <th>Cmimi (per cope)</th>
                     <th>Sasia</th>
-                    <th>Kostoja Totale</th>
+                    <th>Kosto Totale</th>
                 </tr>
             </thead>
             <tbody id="productTable"></tbody>
         </table>
     </div>
 
-    <h3>Kostoja totale ditore: L<span id="dailyTotal">0.00</span></h3>
-    <button onclick="saveRecord()">Ruaji te dhenat</button>
+    <h3>Kostoja Totale Ditore: L<span id="dailyTotal">0.00</span></h3>
+    <button onclick="saveRecord()">Ruaji të dhënat</button>
 
-    <h2>Te dhenat</h2>
+    <h2>Regjistrime</h2>
     <button onclick="exportToCSV()">Shkarko</button>
     <div class="scrollable">
         <table>
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Details</th>
-                    <th>Total</th>
-                    <th>Actions</th>
+                    <th>Data</th>
+                    <th>Detajet</th>
+                    <th>Totali</th>
+                    <th>Veprime</th>
                 </tr>
             </thead>
             <tbody id="recordTable"></tbody>
@@ -167,102 +145,94 @@
         const dailyTotalDisplay = document.getElementById("dailyTotal");
         const recordTable = document.getElementById("recordTable");
 
-        // Update the product table
+        // Initialize product table
         function updateProductTable() {
             productTable.innerHTML = '';
             allProducts.forEach((product, index) => {
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td><input type="text" value="${product.product}" id="product-${index}" placeholder="Product"></td>
-                    <td><input type="number" value="${product.price}" id="price-${index}" min="0" step="0.01" onchange="updateDailyTotal()"></td>
-                    <td><input type="number" value="0" id="quantity-${index}" min="0" step="1" onchange="updateDailyTotal()"></td>
+                    <td>${product.product}</td>
+                    <td>L${product.price.toFixed(2)}</td>
+                    <td><input type="number" id="quantity-${index}" value="0" min="0" step="1" onchange="updateDailyTotal()"></td>
                     <td id="total-${index}">L0.00</td>
                 `;
                 productTable.appendChild(row);
             });
         }
 
-        // Update the daily total
+        // Calculate daily total
         function updateDailyTotal() {
             let total = 0;
             allProducts.forEach((product, index) => {
-                const productName = document.getElementById(`product-${index}`).value.trim();
-                const productPrice = parseFloat(document.getElementById(`price-${index}`).value) || 0;
                 const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
-                const totalCost = productPrice * quantity;
-
-                if (productName && productPrice > 0 && quantity > 0) {
-                    document.getElementById(`total-${index}`).textContent = `L${totalCost.toFixed(2)}`;
-                    total += totalCost;
-                } else {
-                    document.getElementById(`total-${index}`).textContent = "L0.00";
-                }
+                const totalCost = product.price * quantity;
+                document.getElementById(`total-${index}`).textContent = `L${totalCost.toFixed(2)}`;
+                total += totalCost;
             });
             dailyTotalDisplay.textContent = total.toFixed(2);
         }
 
-        // Save the current record
-        function saveRecord() {
+        // Save daily record
+        async function saveRecord() {
             const date = new Date().toLocaleDateString();
             const details = allProducts.map((product, index) => {
-                const productName = document.getElementById(`product-${index}`).value.trim();
-                const productPrice = parseFloat(document.getElementById(`price-${index}`).value) || 0;
                 const quantity = parseInt(document.getElementById(`quantity-${index}`).value) || 0;
-                const totalCost = productPrice * quantity;
-
-                if (productName && productPrice > 0 && quantity > 0) {
-                    return { product: productName, quantity, totalCost };
+                if (quantity > 0) {
+                    return { item: product.product, quantity, total: product.price * quantity };
                 }
-            }).filter(detail => detail);
-
-            const total = details.reduce((sum, item) => sum + item.totalCost, 0);
+                return null;
+            }).filter(Boolean);
 
             if (details.length === 0) {
-                alert("No valid records to save!");
+                alert("No valid data to save!");
                 return;
             }
 
-            records.push({ date, details, total });
-            updateRecordTable();
-            alert("Record saved successfully!");
+            const total = details.reduce((sum, item) => sum + item.total, 0);
+            const record = { date, details, total };
+
+            try {
+                const response = await fetch('/api/records', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(record),
+                });
+                if (!response.ok) throw new Error("Failed to save record!");
+                records.push(await response.json());
+                alert("Record saved!");
+                updateRecordTable();
+            } catch (error) {
+                console.error("Error saving record:", error);
+            }
         }
 
-        // Update the record table
+        // Populate record table
         function updateRecordTable() {
-            recordTable.innerHTML = '';
-            records.forEach((record, index) => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
+            recordTable.innerHTML = records.map((record, index) => `
+                <tr>
                     <td>${record.date}</td>
-                    <td>${record.details.map(d => `${d.product}: ${d.quantity} x L${d.totalCost.toFixed(2)}`).join('<br>')}</td>
+                    <td>${record.details.map(d => `${d.item} (${d.quantity})`).join(", ")}</td>
                     <td>L${record.total.toFixed(2)}</td>
                     <td><button onclick="deleteRecord(${index})">Delete</button></td>
-                `;
-                recordTable.appendChild(row);
-            });
-        }
-
-        // Delete a record
-        function deleteRecord(index) {
-            records.splice(index, 1);
-            updateRecordTable();
+                </tr>
+            `).join("");
         }
 
         // Export records to CSV
         function exportToCSV() {
-            let csvContent = "Date,Details,Total\n";
+            let csv = "Date,Details,Total\n";
             records.forEach(record => {
-                csvContent += `${record.date},"${record.details.map(d => `${d.product}: ${d.quantity} x L${d.totalCost.toFixed(2)}`).join('; ')}",L${record.total.toFixed(2)}\n`;
+                const details = record.details.map(d => `${d.item} (${d.quantity})`).join(", ");
+                csv += `${record.date},"${details}",L${record.total.toFixed(2)}\n`;
             });
-
-            const blob = new Blob([csvContent], { type: "text/csv" });
-            const link = document.createElement("a");
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            link.download = "records.csv";
+            link.download = 'records.csv';
             link.click();
         }
 
-        // Initialize the product table
+        // Initialize on page load
         updateProductTable();
     </script>
 </body>
