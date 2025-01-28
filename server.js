@@ -66,6 +66,17 @@ app.delete("/api/records/:id", async (req, res) => {
     }
 });
 
+// Route: Test database connection
+app.get('/api/test-connection', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT NOW()');
+        res.status(200).json({ status: 'success', timestamp: result.rows[0].now });
+    } catch (err) {
+        console.error('Database connection error:', err.message);
+        res.status(500).json({ status: 'error', message: err.message });
+    }
+});
+
 // Start server
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
