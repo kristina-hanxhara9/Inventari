@@ -1,87 +1,70 @@
 const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const pool = require("./database");
+
 const app = express();
-const port = process.env.PORT || 3001;
+const port = 3001;
 
-// Middleware to parse JSON bodies
-app.use(express.json());
+// Middleware
+app.use(bodyParser.json());
+app.use(cors());
 
-
-
-// Connect to the SQLite database
-const db = new sqlite3.Database('./database.db', (err) => {
-    if (err) {
-        console.error("Error opening database: ", err.message);
-    } else {
-        console.log("Connected to the SQLite database.");
+// Route: Get all records
+app.get("/api/records", async (req, res) => {
+    try {
+        const result = await pool.query("SELECT * FROM records ORDER BY date DESC");
+        res.json(result.rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error fetching records.");
     }
 });
 
-// Route to add a record to the database
-app.post("/api/records", (req, res) => {
-    const { date, produktet, cmimi_per_cope, sasia, kostoja_totale, pjesa_e_pare_e_dites, pjesa_e_dyte_e_dites, totali_perfundimtar } = req.body;
-
-    const query = `
-        INSERT INTO records (Date, Produktet, Cmimi_per_cope, Sasia, Kostoja_Totale, Pjesa_e_Pare_e_Dites, Pjesa_e_Dyte_e_Dites, Totali_Perfundimtar)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    db.run(query, [date, produktet, cmimi_per_cope, sasia, kostoja_totale, pjesa_e_pare_e_dites, pjesa_e_dyte_e_dites, totali_perfundimtar], function (err) {
-        if (err) {
-            console.error("Error inserting record:", err.message);
-            return res.status(500).json({ error: "Gabim gjatë ruajtjes së të dhënave." });
-        }
-        res.status(201).json({ message: "Të dhënat u ruajtën me sukses!", id: this.lastID });
-    });
+// Route: Add a record
+app.post("/api/records", async (req, res) => {
+    const { date, details, total } = req.body;
+    try {
+        const result = await pool.query(
+            "INSERT INTO records (date, details, total) VALUES ($1, $2, $3) RETURNING *",
+            [date, JSON.stringify(details), total]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error saving record.");
+    }
 });
 
-// Route to fetch all records
-app.get("/api/records", (req, res) => {
-    db.all("SELECT * FROM records", [], (err, rows) => {
-        if (err) {
-            console.error("Error fetching records:", err.message);
-            return res.status(500).json({ error: "Gabim gjatë marrjes së të dhënave." });
-        }
-        res.json(rows);
-    });
-});
-
-// Route to update a record
-app.put("/api/records/:id", (req, res) => {
+// Route: Update a record
+app.put("/api/records/:id", async (req, res) => {
     const { id } = req.params;
-    const { date, produktet, cmimi_per_cope, sasia, kostoja_totale, pjesa_e_pare_e_dites, pjesa_e_dyte_e_dites, totali_perfundimtar } = req.body;
-
-    const query = `
-        UPDATE records 
-        SET Date = ?, Produktet = ?, Cmimi_per_cope = ?, Sasia = ?, Kostoja_Totale = ?, Pjesa_e_Pare_e_Dites = ?, Pjesa_e_Dyte_e_Dites = ?, Totali_Perfundimtar = ? 
-        WHERE id = ?
-    `;
-
-    db.run(query, [date, produktet, cmimi_per_cope, sasia, kostoja_totale, pjesa_e_pare_e_dites, pjesa_e_dyte_e_dites, totali_perfundimtar, id], function (err) {
-        if (err) {
-            console.error("Error updating record:", err.message);
-            return res.status(500).json({ error: "Gabim gjatë përditësimit të të dhënave." });
-        }
-        res.json({ message: "Të dhënat u përditësuan me sukses!", changes: this.changes });
-    });
+    const { date, details, total } = req.body;
+    try {
+        const result = await pool.query(
+            "UPDATE records SET date = $1, details = $2, total = $3 WHERE id = $4 RETURNING *",
+            [date, JSON.stringify(details), total, id]
+        );
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error updating record.");
+    }
 });
 
-// Route to delete a record
-app.delete("/api/records/:id", (req, res) => {
+// Route: Delete a record
+app.delete("/api/records/:id", async (req, res) => {
     const { id } = req.params;
-
-    const query = `DELETE FROM records WHERE id = ?`;
-
-    db.run(query, [id], function (err) {
-        if (err) {
-            console.error("Error deleting record:", err.message);
-            return res.status(500).json({ error: "Gabim gjatë fshirjes së të dhënave." });
-        }
-        res.json({ message: "Të dhënat u fshinë me sukses!", changes: this.changes });
-    });
+    try {
+        await pool.query("DELETE FROM records WHERE id = $1", [id]);
+        res.status(204).send();
+    } catch (error) {
+        console.error(error);
+        res.status(500).send("Error deleting record.");
+    }
 });
 
-// Start the server
+// Start server
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });

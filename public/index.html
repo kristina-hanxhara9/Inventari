@@ -185,205 +185,262 @@
         ];
 
 
+    let allProducts = [];
+    let records = [];
+    let editIndex = null;
 
-              // Variables to keep track of data
-              let allProducts = [];
-        let records = [];
-        let editIndex = null;
+    const productTable = document.getElementById("productTable");
+    const dailyTotalDisplay = document.getElementById("dailyTotal");
+    const recordTable = document.getElementById("recordTable");
+    const editModal = document.getElementById("editModal");
+    const overlay = document.getElementById("overlay");
+    const editProductTable = document.getElementById("editProductTable");
 
-        // Get the elements
-        const productTable = document.getElementById("productTable");
-        const dailyTotalDisplay = document.getElementById("dailyTotal");
-        const recordTable = document.getElementById("recordTable");
-        const editModal = document.getElementById("editModal");
-        const overlay = document.getElementById("overlay");
-        const editProductTable = document.getElementById("editProductTable");
+    function updateProductTable() {
+        allProducts = [];
+        productTable.innerHTML = "";
 
-        // Function to initialize the product table
-        function updateProductTable() {
-            allProducts = [];
-            productTable.innerHTML = "";
+        products.forEach((product, index) => {
+            addRowToTable(product, index);
+            allProducts.push({ ...product, quantity: 0, firstPart: 0, secondPart: 0, totalCost: 0, finalTotal: 0 });
+        });
 
-            // Populate fixed products
-            products.forEach((product, index) => {
-                addRowToTable(product, index);
-                allProducts.push({ ...product, quantity: 0, firstPart: 0, secondPart: 0, totalCost: 0, finalTotal: 0 });
+        for (let i = 0; i < 10; i++) {
+            addRowToTable({ product: "", price: "", quantity: 0, firstPart: 0, secondPart: 0 }, products.length + i, true);
+            allProducts.push({ product: "", price: 0, quantity: 0, firstPart: 0, secondPart: 0, totalCost: 0, finalTotal: 0 });
+        }
+
+        addInputListeners();
+        updateDailyTotal();
+    }
+
+    function addRowToTable(product, index, isEditable = false) {
+        const firstPart = (product.firstPart !== undefined && product.firstPart !== null) ? product.firstPart : 0;
+        const secondPart = (product.secondPart !== undefined && product.secondPart !== null) ? product.secondPart : 0;
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${isEditable ? `<input type="text" class="product-name" placeholder="Produkt" value="${product.product}">` : product.product}</td>
+            <td><input type="number" class="price" value="${product.price}" /></td>
+            <td><input type="number" class="quantity" value="${product.quantity}" /></td>
+            <td class="total-cost">0.00</td>
+            <td><input type="number" class="first-part" value="${firstPart}" /></td>
+            <td><input type="number" class="second-part" value="${secondPart}" /></td>
+            <td class="final-total">0.00</td>
+        `;
+        productTable.appendChild(row);
+    }
+
+    function addInputListeners() {
+        const inputs = productTable.querySelectorAll("input");
+        inputs.forEach((input) => {
+            input.addEventListener("input", updateRowTotals);
+        });
+    }
+
+    function updateRowTotals(event) {
+        const row = event.target.closest("tr");
+        if (!row) return;
+
+        const index = Array.from(productTable.rows).indexOf(row);
+        const productNameInput = row.querySelector(".product-name");
+        const priceInput = row.querySelector(".price");
+        const quantityInput = row.querySelector(".quantity");
+        const firstPartInput = row.querySelector(".first-part");
+        const secondPartInput = row.querySelector(".second-part");
+        const totalCostCell = row.querySelector(".total-cost");
+        const finalTotalCell = row.querySelector(".final-total");
+
+        const productName = productNameInput ? productNameInput.value : products[index].product;
+        const price = parseFloat(priceInput.value) || 0;
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const firstPart = parseFloat(firstPartInput.value) || 0;
+        const secondPart = parseFloat(secondPartInput.value) || 0;
+
+        const totalCost = price * quantity;
+        const finalTotal = totalCost - (firstPart * price) - (secondPart * price);
+
+        totalCostCell.textContent = totalCost.toFixed(2);
+        finalTotalCell.textContent = finalTotal.toFixed(2);
+
+        allProducts[index] = {
+            product: productName,
+            price: price,
+            quantity: quantity,
+            firstPart: firstPart,
+            secondPart: secondPart,
+            totalCost: totalCost,
+            finalTotal: finalTotal
+        };
+
+        updateDailyTotal();
+    }
+
+    function updateDailyTotal() {
+        let total = 0;
+        allProducts.forEach((product) => {
+            total += product.finalTotal || 0;
+        });
+        dailyTotalDisplay.textContent = total.toFixed(2);
+    }
+
+    async function saveRecord() {
+        const date = new Date().toLocaleDateString();
+        const details = allProducts.filter(p => p.product && (p.quantity > 0 || p.firstPart > 0 || p.secondPart > 0));
+        const total = parseFloat(dailyTotalDisplay.textContent) || 0;
+
+        if (!details.length) {
+            alert("Nuk ka asnjë produkt të regjistruar.");
+            return;
+        }
+
+        const record = { date, details, total };
+
+        try {
+            const response = await fetch("/api/records", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(record),
             });
 
-            // Add 10 empty rows for dynamic entry
-            for (let i = 0; i < 10; i++) {
-                addRowToTable({ product: "", price: "", quantity: 0, firstPart: 0, secondPart: 0 }, products.length + i, true);
-                allProducts.push({ product: "", price: 0, quantity: 0, firstPart: 0, secondPart: 0, totalCost: 0, finalTotal: 0 });
+            if (!response.ok) {
+                throw new Error("Gabim gjatë ruajtjes së të dhënave.");
             }
 
-            addInputListeners();
-            updateDailyTotal();
-        }
-
-        function addRowToTable(product, index, isEditable = false) {
-    // Ensure that undefined or empty fields for the parts default to 0
-    const firstPart = (product.firstPart !== undefined && product.firstPart !== null) ? product.firstPart : 0;
-    const secondPart = (product.secondPart !== undefined && product.secondPart !== null) ? product.secondPart : 0;
-
-    const row = document.createElement("tr");
-    row.innerHTML = `
-        <td>${isEditable ? `<input type="text" class="product-name" placeholder="Produkt" value="${product.product}">` : product.product}</td>
-        <td><input type="number" class="price" value="${product.price}" /></td>
-        <td><input type="number" class="quantity" value="${product.quantity}" /></td>
-        <td class="total-cost">0.00</td>
-        <td><input type="number" class="first-part" value="${firstPart}" /></td>
-        <td><input type="number" class="second-part" value="${secondPart}" /></td>
-        <td class="final-total">0.00</td>
-    `;
-    productTable.appendChild(row);
-}
-
-
-        function addInputListeners() {
-            const inputs = productTable.querySelectorAll("input");
-            inputs.forEach((input) => {
-                input.addEventListener("input", updateRowTotals);
-            });
-        }
-
-        function updateRowTotals(event) {
-            const row = event.target.closest("tr");
-            if (!row) return;
-
-            const index = Array.from(productTable.rows).indexOf(row);
-            const productNameInput = row.querySelector(".product-name");
-            const priceInput = row.querySelector(".price");
-            const quantityInput = row.querySelector(".quantity");
-            const firstPartInput = row.querySelector(".first-part");
-            const secondPartInput = row.querySelector(".second-part");
-            const totalCostCell = row.querySelector(".total-cost");
-            const finalTotalCell = row.querySelector(".final-total");
-
-            const productName = productNameInput ? productNameInput.value : products[index].product;
-            const price = parseFloat(priceInput.value) || 0;
-            const quantity = parseFloat(quantityInput.value) || 0;
-            const firstPart = parseFloat(firstPartInput.value) || 0;
-            const secondPart = parseFloat(secondPartInput.value) || 0;
-
-            const totalCost = price * quantity;
-            const finalTotal = totalCost - (firstPart * price) - (secondPart * price);
-
-            totalCostCell.textContent = totalCost.toFixed(2);
-            finalTotalCell.textContent = finalTotal.toFixed(2);
-
-            // Update the allProducts array
-            allProducts[index] = {
-                product: productName,
-                price: price,
-                quantity: quantity,
-                firstPart: firstPart,
-                secondPart: secondPart,
-                totalCost: totalCost,
-                finalTotal: finalTotal
-            };
-
-            updateDailyTotal();
-        }
-
-        function updateDailyTotal() {
-            let total = 0;
-            allProducts.forEach((product) => {
-                total += product.finalTotal || 0;
-            });
-            dailyTotalDisplay.textContent = total.toFixed(2);
-        }
-
-        function saveRecord() {
-            const date = new Date().toLocaleDateString();
-            const details = allProducts.filter(p => p.product && (p.quantity > 0 || p.firstPart > 0 || p.secondPart > 0));
-            const total = parseFloat(dailyTotalDisplay.textContent) || 0;
-
-            const record = { date, details, total };
-            records.push(record);
-            updateRecordTable();
+            const data = await response.json();
             alert("Të dhënat u ruajtën me sukses!");
+            updateRecordTable();
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Gabim gjatë ruajtjes së të dhënave.");
         }
+    }
 
-        function updateRecordTable() {
+    async function updateRecordTable() {
+        try {
+            const response = await fetch("/api/records");
+            if (!response.ok) {
+                throw new Error("Gabim gjatë marrjes së të dhënave.");
+            }
+
+            records = await response.json();
             recordTable.innerHTML = "";
-            records.forEach((record) => {
+            records.forEach((record, i) => {
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td>${record.date}</td>
-                    <td><button onclick="viewDetails(${records.indexOf(record)})">Shiko</button></td>
-                    <td>${record.total.toFixed(2)}</td>
-                    <td><button onclick="deleteRecord(${records.indexOf(record)})">Fshij</button></td>
+                    <td>${record.Date}</td>
+                    <td><button onclick="viewDetails(${i})">Shiko</button></td>
+                    <td>${record.Totali_Perfundimtar.toFixed(2)}</td>
+                    <td><button onclick="deleteRecord(${i})">Fshij</button></td>
                 `;
                 recordTable.appendChild(row);
             });
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Gabim gjatë marrjes së të dhënave.");
         }
+    }
 
-        function viewDetails(index) {
-            const record = records[index];
-            editIndex = index;
+    function viewDetails(index) {
+        const record = records[index];
+        editIndex = index;
 
-            editProductTable.innerHTML = "";
-            record.details.forEach((product) => {
-                addRowToEditTable(product);
+        editProductTable.innerHTML = "";
+        record.details.forEach((product) => {
+            addRowToEditTable(product);
+        });
+
+        editModal.style.display = "block";
+        overlay.style.display = "block";
+    }
+
+    function addRowToEditTable(product) {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${product.Produktet}</td>
+            <td>${product.Cmimi_per_cope}</td>
+            <td>${product.Sasia}</td>
+            <td>${product.Kostoja_Totale.toFixed(2)}</td>
+            <td>${product.Pjesa_e_Pare_e_Dites}</td>
+            <td>${product.Pjesa_e_Dyte_e_Dites}</td>
+            <td>${product.Totali_Perfundimtar.toFixed(2)}</td>
+        `;
+        editProductTable.appendChild(row);
+    }
+
+    function closeModal() {
+        editModal.style.display = "none";
+        overlay.style.display = "none";
+    }
+
+    async function saveEdit() {
+        if (editIndex !== null) {
+            const updatedRecord = records[editIndex];
+            updatedRecord.details = allProducts.filter(p => p.product && (p.quantity > 0 || p.firstPart > 0 || p.secondPart > 0));
+            updatedRecord.total = parseFloat(dailyTotalDisplay.textContent) || 0;
+
+            try {
+                const response = await fetch(`/api/records/${updatedRecord.id}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(updatedRecord),
+                });
+
+                if (!response.ok) {
+                    throw new Error("Gabim gjatë përditësimit të të dhënave.");
+                }
+
+                updateRecordTable();
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Gabim gjatë përditësimit të të dhënave.");
+            }
+        }
+        closeModal();
+    }
+
+    async function deleteRecord(index) {
+        const record = records[index];
+
+        try {
+            const response = await fetch(`/api/records/${record.id}`, {
+                method: "DELETE",
             });
 
-            editModal.style.display = "block";
-            overlay.style.display = "block";
-        }
-
-        function addRowToEditTable(product) {
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${product.product}</td>
-                <td>${product.price}</td>
-                <td>${product.quantity}</td>
-                <td>${product.totalCost.toFixed(2)}</td>
-                <td>${product.firstPart}</td>
-                <td>${product.secondPart}</td>
-                <td>${product.finalTotal.toFixed(2)}</td>
-            `;
-            editProductTable.appendChild(row);
-        }
-
-        function closeModal() {
-            editModal.style.display = "none";
-            overlay.style.display = "none";
-        }
-
-        function saveEdit() {
-            if (editIndex !== null) {
-                const updatedRecord = records[editIndex];
-                updatedRecord.details = allProducts.filter(p => p.product && (p.quantity > 0 || p.firstPart > 0 || p.secondPart > 0));
-                updatedRecord.total = parseFloat(dailyTotalDisplay.textContent) || 0;
-                updateRecordTable();
+            if (!response.ok) {
+                throw new Error("Gabim gjatë fshirjes së të dhënave.");
             }
-            closeModal();
-        }
 
-        function deleteRecord(index) {
             records.splice(index, 1);
             updateRecordTable();
+        } catch (error) {
+            console.error("Error:", error);
+            alert("Gabim gjatë fshirjes së të dhënave.");
         }
+    }
 
-        function exportToCSV() {
-            let csvContent = "Date,Details,Total\n";
-            records.forEach((record) => {
-                const details = record.details.map((p) => `${p.product}:${p.quantity}`).join(" | ");
-                csvContent += `${record.date},${details},${record.total.toFixed(2)}\n`;
-            });
+    function exportToCSV() {
+        let csvContent = "Date,Details,Total\n";
+        records.forEach((record) => {
+            const details = record.details.map((p) => `${p.Produktet}:${p.Sasia}`).join(" | ");
+            csvContent += `${record.Date},${details},${record.Totali_Perfundimtar.toFixed(2)}\n`;
+        });
 
-            const blob = new Blob([csvContent], { type: "text/csv" });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "records.csv";
-            link.click();
-        }
+        const blob = new Blob([csvContent], { type: "text/csv" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "records.csv";
+        link.click();
+    }
 
-        // Initialize table when page loads
-        window.onload = function() {
-            updateProductTable();
-            updateRecordTable();
-        };
-    </script>
+    window.onload = function() {
+        updateProductTable();
+        updateRecordTable();
+    };
+</script>
 </body>
 </html>
