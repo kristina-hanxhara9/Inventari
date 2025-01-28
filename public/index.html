@@ -285,38 +285,37 @@
     }
 
     async function saveRecord() {
-        const date = new Date().toLocaleDateString();
-        const details = allProducts.filter(p => p.product && (p.quantity > 0 || p.firstPart > 0 || p.secondPart > 0));
-        const total = parseFloat(dailyTotalDisplay.textContent) || 0;
+    const date = new Date().toLocaleDateString();
+    const details = allProducts.filter(p => p.product && (p.quantity > 0 || p.firstPart > 0 || p.secondPart > 0));
+    const total = parseFloat(dailyTotalDisplay.textContent) || 0;
 
-        if (!details.length) {
-            alert("Nuk ka asnjë produkt të regjistruar.");
-            return;
-        }
-
-        const record = { date, details, total };
-
-        try {
-            const response = await fetch("/api/records", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(record),
-            });
-
-            if (!response.ok) {
-                throw new Error("Gabim gjatë ruajtjes së të dhënave.");
-            }
-
-            const data = await response.json();
-            alert("Të dhënat u ruajtën me sukses!");
-            updateRecordTable();
-        } catch (error) {
-            console.error("Error:", error);
-            alert("Gabim gjatë ruajtjes së të dhënave.");
-        }
+    if (!details.length) {
+        alert("Nuk ka asnjë produkt të regjistruar.");
+        return;
     }
+
+    const record = { date, details, total };
+
+    try {
+        const response = await fetch("/api/records", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(record),
+        });
+
+        if (response.ok) {
+            alert("Të dhënat u ruajtën me sukses!");
+            await updateRecordTable();
+        } else {
+            const errorMessage = await response.text();
+            alert(`Gabim gjatë ruajtjes së të dhënave: ${errorMessage}`);
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        alert("Gabim gjatë ruajtjes së të dhënave.");
+    }
+}
+
 
     async function updateRecordTable() {
         try {

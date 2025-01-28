@@ -40,6 +40,7 @@ app.post("/api/records", async (req, res) => {
 app.put("/api/records/:id", async (req, res) => {
     const { id } = req.params;
     const { date, details, total } = req.body;
+
     try {
         const result = await pool.query(
             "UPDATE records SET date = $1, details = $2, total = $3 WHERE id = $4 RETURNING *",
@@ -55,6 +56,7 @@ app.put("/api/records/:id", async (req, res) => {
 // Route: Delete a record
 app.delete("/api/records/:id", async (req, res) => {
     const { id } = req.params;
+
     try {
         await pool.query("DELETE FROM records WHERE id = $1", [id]);
         res.status(204).send();
@@ -66,5 +68,5 @@ app.delete("/api/records/:id", async (req, res) => {
 
 // Start server
 app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+    console.log(`Server running on http://localhost:${port}`);
 });
