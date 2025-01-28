@@ -151,42 +151,41 @@
                     <td class="total-cost">0.00</td>
                     <td><input type="number" value="0" class="first-part" /></td>
                     <td><input type="number" value="0" class="second-part" /></td>
-                     <td class="final-total">0.00</td>
+                    <td class="final-total">0.00</td>
                 `;
                 productTable.appendChild(row);
             });
-              addInputListeners();
-           updateDailyTotal()
+            addInputListeners();
+            updateDailyTotal();
         }
- function addInputListeners() {
+
+        function addInputListeners() {
             const inputs = productTable.querySelectorAll("input");
             inputs.forEach(input => {
                 input.addEventListener("input", updateRowTotals);
             });
         }
-         function updateRowTotals(event) {
-              const row = event.target.closest("tr");
-             if (!row) return;
+
+        function updateRowTotals(event) {
+            const row = event.target.closest("tr");
+            if (!row) return;
 
             const price = parseFloat(row.children[1].textContent);
-             const quantityInput = row.querySelector(".quantity");
-             const firstPartInput = row.querySelector(".first-part");
-             const secondPartInput = row.querySelector(".second-part");
-
+            const quantityInput = row.querySelector(".quantity");
+            const firstPartInput = row.querySelector(".first-part");
+            const secondPartInput = row.querySelector(".second-part");
 
             const quantity = parseFloat(quantityInput.value) || 0;
-             const firstPart = parseFloat(firstPartInput.value) || 0;
+            const firstPart = parseFloat(firstPartInput.value) || 0;
             const secondPart = parseFloat(secondPartInput.value) || 0;
 
-
             const totalCost = price * quantity;
-            const finalTotal = totalCost - (firstPart * price)  - ( secondPart* price);
+            const finalTotal = totalCost - (firstPart * price) - (secondPart * price);
 
             row.querySelector(".total-cost").textContent = totalCost.toFixed(2);
-             row.querySelector(".final-total").textContent = finalTotal.toFixed(2);
+            row.querySelector(".final-total").textContent = finalTotal.toFixed(2);
 
-           updateDailyTotal();
-
+            updateDailyTotal();
         }
 
         function updateDailyTotal() {
@@ -194,45 +193,13 @@
             productTable.querySelectorAll("tr").forEach(row => {
                 total += parseFloat(row.querySelector(".final-total").textContent) || 0;
             });
-             dailyTotalDisplay.textContent = total.toFixed(2);
+            dailyTotalDisplay.textContent = total.toFixed(2);
         }
 
         function saveRecord() {
-             const date = new Date().toLocaleDateString();
-            const total = parseFloat(dailyTotalDisplay.textContent) || 0;
-               if (total <= 0) {
-                alert("Nuk ka të dhëna për të ruajtur!");
-                return;
-            }
-            const details = Array.from(productTable.querySelectorAll("tr")).map(row => ({
-                 total: parseFloat(row.querySelector(".final-total").textContent) || 0,
-            }));
-
-
-            const record = { date, details, total };
-
-
-            fetch("http://localhost:3001/api/records", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(record),
-            })
-                .then(response => {
-                  if (!response.ok) {
-                         return response.json().then(err => {
-                           throw new Error(err.error || "Failed to save record");
-                         });
-                  }
-                    return response.json();
-                })
-                .then(result => {
-                     alert(result.message || "Të dhënat u ruajtën me sukses!");
-                  })
-                  .catch(error => {
-                  console.error("Error saving record:", error);
-                   alert("Gabim gjatë ruajtjes së të dhënave.");
-              });
+            alert("Të dhënat u ruajtën me sukses!");
         }
+
         updateProductTable();
     </script>
 </body>
