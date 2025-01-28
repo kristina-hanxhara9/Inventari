@@ -1,13 +1,19 @@
 const express = require("express");
-const bodyParser = require("body-parser");
-const path = require("path");
-const db = require("./database"); // Import the database connection
-
+const sqlite3 = require("sqlite3").verbose();
 const app = express();
-const PORT = 3001;
+const port = process.env.PORT || 3001;
 
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, "public")));
+// Middleware to parse JSON bodies
+app.use(express.json());
+
+// Connect to the SQLite database
+const db = new sqlite3.Database('./database.db', (err) => {
+    if (err) {
+        console.error("Error opening database: ", err.message);
+    } else {
+        console.log("Connected to the SQLite database.");
+    }
+});
 
 // Route to add a record to the database
 app.post("/api/records", (req, res) => {
@@ -38,12 +44,7 @@ app.get("/api/records", (req, res) => {
     });
 });
 
-// Serve frontend
-app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
 // Start the server
-app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+app.listen(port, () => {
+    console.log(`Server running on port ${port}`);
 });
