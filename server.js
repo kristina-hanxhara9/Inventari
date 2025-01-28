@@ -6,6 +6,12 @@ const port = process.env.PORT || 3001;
 // Middleware to parse JSON bodies
 app.use(express.json());
 
+// Middleware to set Content Security Policy (CSP) header
+app.use((req, res, next) => {
+    res.setHeader('Content-Security-Policy', "default-src 'none'; font-src 'self' https://cdn.scite.ai;");
+    next();
+});
+
 // Connect to the SQLite database
 const db = new sqlite3.Database('./database.db', (err) => {
     if (err) {
