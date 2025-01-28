@@ -44,6 +44,41 @@ app.get("/api/records", (req, res) => {
     });
 });
 
+// Route to update a record
+app.put("/api/records/:id", (req, res) => {
+    const { id } = req.params;
+    const { date, produktet, cmimi_per_cope, sasia, kostoja_totale, pjesa_e_pare_e_dites, pjesa_e_dyte_e_dites, totali_perfundimtar } = req.body;
+
+    const query = `
+        UPDATE records 
+        SET Date = ?, Produktet = ?, Cmimi_per_cope = ?, Sasia = ?, Kostoja_Totale = ?, Pjesa_e_Pare_e_Dites = ?, Pjesa_e_Dyte_e_Dites = ?, Totali_Perfundimtar = ? 
+        WHERE id = ?
+    `;
+
+    db.run(query, [date, produktet, cmimi_per_cope, sasia, kostoja_totale, pjesa_e_pare_e_dites, pjesa_e_dyte_e_dites, totali_perfundimtar, id], function (err) {
+        if (err) {
+            console.error("Error updating record:", err.message);
+            return res.status(500).json({ error: "Gabim gjatë përditësimit të të dhënave." });
+        }
+        res.json({ message: "Të dhënat u përditësuan me sukses!", changes: this.changes });
+    });
+});
+
+// Route to delete a record
+app.delete("/api/records/:id", (req, res) => {
+    const { id } = req.params;
+
+    const query = `DELETE FROM records WHERE id = ?`;
+
+    db.run(query, [id], function (err) {
+        if (err) {
+            console.error("Error deleting record:", err.message);
+            return res.status(500).json({ error: "Gabim gjatë fshirjes së të dhënave." });
+        }
+        res.json({ message: "Të dhënat u fshinë me sukses!", changes: this.changes });
+    });
+});
+
 // Start the server
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);

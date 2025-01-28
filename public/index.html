@@ -72,7 +72,7 @@
                     <th>Data</th>
                     <th>Detajet</th>
                     <th>Totali</th>
-                    <th>Actions</th>
+                    <th>Veprime</th>
                 </tr>
             </thead>
             <tbody id="recordTable"></tbody>
@@ -101,9 +101,10 @@
         <button onclick="saveEdit()">Ruaj Ndryshimet</button>
         <button onclick="closeModal()">Anullo</button>
     </div>
-    <div id="overlay" class="overlay" onclick="closeModal()"></div>
 
-    <script>
+    <div id="overlay" class="overlay"></div>
+
+    <script>  
         const products = [
              { product: "Ekmek", price: 1.5 },
             { product: "Torte", price: 12.000 },
@@ -184,9 +185,9 @@
         ];
 
 
-       
-        // Variables to keep track of data
-        let allProducts = [];
+
+              // Variables to keep track of data
+              let allProducts = [];
         let records = [];
         let editIndex = null;
 
@@ -220,18 +221,23 @@
         }
 
         function addRowToTable(product, index, isEditable = false) {
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${isEditable ? `<input type="text" class="product-name" placeholder="Produkt" value="${product.product}">` : product.product}</td>
-                <td><input type="number" class="price" value="${product.price}" /></td>
-                <td><input type="number" class="quantity" value="${product.quantity}" /></td>
-                <td class="total-cost">0.00</td>
-                <td><input type="number" class="first-part" value="${product.firstPart}" /></td>
-                <td><input type="number" class="second-part" value="${product.secondPart}" /></td>
-                <td class="final-total">0.00</td>
-            `;
-            productTable.appendChild(row);
-        }
+    // Ensure that undefined or empty fields for the parts default to 0
+    const firstPart = (product.firstPart !== undefined && product.firstPart !== null) ? product.firstPart : 0;
+    const secondPart = (product.secondPart !== undefined && product.secondPart !== null) ? product.secondPart : 0;
+
+    const row = document.createElement("tr");
+    row.innerHTML = `
+        <td>${isEditable ? `<input type="text" class="product-name" placeholder="Produkt" value="${product.product}">` : product.product}</td>
+        <td><input type="number" class="price" value="${product.price}" /></td>
+        <td><input type="number" class="quantity" value="${product.quantity}" /></td>
+        <td class="total-cost">0.00</td>
+        <td><input type="number" class="first-part" value="${firstPart}" /></td>
+        <td><input type="number" class="second-part" value="${secondPart}" /></td>
+        <td class="final-total">0.00</td>
+    `;
+    productTable.appendChild(row);
+}
+
 
         function addInputListeners() {
             const inputs = productTable.querySelectorAll("input");
@@ -300,122 +306,43 @@
 
         function updateRecordTable() {
             recordTable.innerHTML = "";
-            records.forEach((record, index) => {
+            records.forEach((record) => {
                 const row = document.createElement("tr");
                 row.innerHTML = `
                     <td>${record.date}</td>
-                    <td>${formatDetails(record.details)}</td>
-                    <td>L${record.total.toFixed(2)}</td>
-                    <td>
-                        <button onclick="editRecord(${index})">Edito</button>
-                    </td>
+                    <td><button onclick="viewDetails(${records.indexOf(record)})">Shiko</button></td>
+                    <td>${record.total.toFixed(2)}</td>
+                    <td><button onclick="deleteRecord(${records.indexOf(record)})">Fshij</button></td>
                 `;
                 recordTable.appendChild(row);
             });
         }
 
-        function formatDetails(details) {
-            return details.map(d => `${d.product}: Sasia ${d.quantity}, Kostoja ${d.totalCost.toFixed(2)}, P1: ${d.firstPart}, P2: ${d.secondPart}, Totali: ${d.finalTotal.toFixed(2)}`).join("<br>");
-        }
-
-        function editRecord(index) {
-            editIndex = index;
+        function viewDetails(index) {
             const record = records[index];
+            editIndex = index;
 
-            // Populate the edit table
             editProductTable.innerHTML = "";
-            record.details.forEach((product, idx) => {
-                addEditRow(product, idx);
+            record.details.forEach((product) => {
+                addRowToEditTable(product);
             });
 
-            // Show the modal
             editModal.style.display = "block";
             overlay.style.display = "block";
         }
 
-        function addEditRow(product, index) {
+        function addRowToEditTable(product) {
             const row = document.createElement("tr");
             row.innerHTML = `
-                <td><input type="text" class="product-name" value="${product.product}" /></td>
-                <td><input type="number" class="price" value="${product.price}" /></td>
-                <td><input type="number" class="quantity" value="${product.quantity}" /></td>
-                <td class="total-cost">${product.totalCost.toFixed(2)}</td>
-                <td><input type="number" class="first-part" value="${product.firstPart}" /></td>
-                <td><input type="number" class="second-part" value="${product.secondPart}" /></td>
-                <td class="final-total">${product.finalTotal.toFixed(2)}</td>
+                <td>${product.product}</td>
+                <td>${product.price}</td>
+                <td>${product.quantity}</td>
+                <td>${product.totalCost.toFixed(2)}</td>
+                <td>${product.firstPart}</td>
+                <td>${product.secondPart}</td>
+                <td>${product.finalTotal.toFixed(2)}</td>
             `;
             editProductTable.appendChild(row);
-
-            // Add event listeners
-            const inputs = row.querySelectorAll("input");
-            inputs.forEach((input) => {
-                input.addEventListener("input", updateEditRowTotals);
-            });
-        }
-
-        function updateEditRowTotals(event) {
-            const row = event.target.closest("tr");
-            if (!row) return;
-
-            const priceInput = row.querySelector(".price");
-            const quantityInput = row.querySelector(".quantity");
-            const firstPartInput = row.querySelector(".first-part");
-            const secondPartInput = row.querySelector(".second-part");
-            const totalCostCell = row.querySelector(".total-cost");
-            const finalTotalCell = row.querySelector(".final-total");
-
-            const price = parseFloat(priceInput.value) || 0;
-            const quantity = parseFloat(quantityInput.value) || 0;
-            const firstPart = parseFloat(firstPartInput.value) || 0;
-            const secondPart = parseFloat(secondPartInput.value) || 0;
-
-            const totalCost = price * quantity;
-            const finalTotal = totalCost - (firstPart * price) - (secondPart * price);
-
-            totalCostCell.textContent = totalCost.toFixed(2);
-            finalTotalCell.textContent = finalTotal.toFixed(2);
-        }
-
-        function saveEdit() {
-            const rows = editProductTable.querySelectorAll("tr");
-            const updatedDetails = [];
-            rows.forEach((row) => {
-                const productName = row.querySelector(".product-name").value;
-                const price = parseFloat(row.querySelector(".price").value) || 0;
-                const quantity = parseFloat(row.querySelector(".quantity").value) || 0;
-                const firstPart = parseFloat(row.querySelector(".first-part").value) || 0;
-                const secondPart = parseFloat(row.querySelector(".second-part").value) || 0;
-
-                const totalCost = price * quantity;
-                const finalTotal = totalCost - (firstPart * price) - (secondPart * price);
-
-                row.querySelector(".total-cost").textContent = totalCost.toFixed(2);
-                row.querySelector(".final-total").textContent = finalTotal.toFixed(2);
-
-                if (productName) {
-                    updatedDetails.push({
-                        product: productName,
-                        price: price,
-                        quantity: quantity,
-                        firstPart: firstPart,
-                        secondPart: secondPart,
-                        totalCost: totalCost,
-                        finalTotal: finalTotal
-                    });
-                }
-            });
-
-            const total = updatedDetails.reduce((acc, curr) => acc + curr.finalTotal, 0);
-
-            // Update the record
-            records[editIndex].details = updatedDetails;
-            records[editIndex].total = total;
-
-            // Update the record table
-            updateRecordTable();
-
-            // Close the modal
-            closeModal();
         }
 
         function closeModal() {
@@ -423,23 +350,40 @@
             overlay.style.display = "none";
         }
 
+        function saveEdit() {
+            if (editIndex !== null) {
+                const updatedRecord = records[editIndex];
+                updatedRecord.details = allProducts.filter(p => p.product && (p.quantity > 0 || p.firstPart > 0 || p.secondPart > 0));
+                updatedRecord.total = parseFloat(dailyTotalDisplay.textContent) || 0;
+                updateRecordTable();
+            }
+            closeModal();
+        }
+
+        function deleteRecord(index) {
+            records.splice(index, 1);
+            updateRecordTable();
+        }
+
         function exportToCSV() {
-            let csvContent = "Data,Detajet,Totali\n";
-            records.forEach(record => {
-                const details = record.details.map(d => `${d.product}: Sasia ${d.quantity}, Kostoja ${d.totalCost.toFixed(2)}, P1: ${d.firstPart}, P2: ${d.secondPart}, Totali: ${d.finalTotal.toFixed(2)}`).join(" | ");
-                csvContent += `${record.date},"${details}",${record.total.toFixed(2)}\n`;
+            let csvContent = "Date,Details,Total\n";
+            records.forEach((record) => {
+                const details = record.details.map((p) => `${p.product}:${p.quantity}`).join(" | ");
+                csvContent += `${record.date},${details},${record.total.toFixed(2)}\n`;
             });
 
             const blob = new Blob([csvContent], { type: "text/csv" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "regjistrime.csv";
-            a.click();
-            URL.revokeObjectURL(url);
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "records.csv";
+            link.click();
         }
 
-        updateProductTable();
+        // Initialize table when page loads
+        window.onload = function() {
+            updateProductTable();
+            updateRecordTable();
+        };
     </script>
 </body>
 </html>
