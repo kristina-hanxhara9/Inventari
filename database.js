@@ -1,12 +1,32 @@
 const { Pool } = require("pg");
+require("dotenv").config();
 
-// PostgreSQL connection pool
 const pool = new Pool({
-    user: "postgres", // Replace with your PostgreSQL username
-    host: "localhost", // Replace with your host
-    database: "inventory_db", // Replace with your database name
-    password: "deon2020", // Replace with your PostgreSQL password
-    port: 5432, // Default PostgreSQL port
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
 });
 
-module.exports = pool;
+async function insertRecord(record) {
+    const query = `
+        INSERT INTO records (date, produktet, cmimi_per_cope, sasia, kostoja_totale, pjesa_e_pare_e_dites, pjesa_e_dyte_e_dites, totali_perfundimtar)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *;
+    `;
+
+    const values = [
+        record.date,
+        record.produktet,
+        record.cmimi_per_cope,
+        record.sasia,
+        record.kostoja_totale,
+        record.pjesa_e_pare_e_dites,
+        record.pjesa_e_dyte_e_dites,
+        record.totali_perfundimtar,
+    ];
+
+    try {
+        const result = await pool.query(query, values);
+        return result.rows[0]; // Return the inserted record
+    } catch (error) {
+        console.error("Error inserting record:", error);
+    }
+}

@@ -318,7 +318,7 @@ function updateDailyTotal() {
 // Fetch and update record table
 async function updateRecordTable() {
     try {
-        const response = await fetch("http://localhost:3001/api/records");
+        const response = await fetch("https://inventari-okqu.onrender.com/api/records");
         if (!response.ok) throw new Error("Error fetching records");
 
         records = await response.json();
@@ -353,7 +353,7 @@ async function saveRecord() {
     const record = { date, details, total };
 
     try {
-        const response = await fetch("http://localhost:3001/api/records", {
+        const response = await fetch("https://inventari-okqu.onrender.com/api/records", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(record),
@@ -413,7 +413,7 @@ async function saveEdit() {
         updatedRecord.total = parseFloat(dailyTotalDisplay.textContent) || 0;
 
         try {
-            const response = await fetch(`http://localhost:3001/api/records/${updatedRecord.id}`, {
+            const response = await fetch(`https://inventari-okqu.onrender.com/api/records/${updatedRecord.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -438,7 +438,7 @@ async function deleteRecord(index) {
     const record = records[index];
 
     try {
-        const response = await fetch(`http://localhost:3001/api/records/${record.id}`, {
+        const response = await fetch(`https://inventari-okqu.onrender.com/api/records/${record.id}`, {
             method: "DELETE",
         });
 
