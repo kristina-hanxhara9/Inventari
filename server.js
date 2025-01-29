@@ -5,7 +5,9 @@ import admin from "firebase-admin";
 import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
 
 // Initialize Firebase Admin (for backend authentication)
+// Read Firebase credentials from environment variable
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://furra-shqipe-default-rtdb.europe-west1.firebasedatabase.app"
