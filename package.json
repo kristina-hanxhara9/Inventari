@@ -1,4 +1,5 @@
 {
+  "type": "module",
   "name": "daja-calculator",
   "version": "1.0.0",
   "description": "A simple inventory calculator app for managing product data and daily records.",
