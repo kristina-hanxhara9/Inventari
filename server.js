@@ -2,10 +2,13 @@ import express from "express";
 import cors from "cors";
 import admin from "firebase-admin";
 import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
+import fs from "fs";
+import path from "path";
 
 // Initialize Firebase Admin (for backend authentication)
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+const serviceAccountPath = '/etc/secrets/FIREBASE_SERVICE_ACCOUNT'; // Path to the secret file
+const serviceAccount = fs.existsSync(serviceAccountPath)
+  ? JSON.parse(fs.readFileSync(serviceAccountPath))
   : null;
 
 if (!serviceAccount) {
