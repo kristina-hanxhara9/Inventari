@@ -8,7 +8,13 @@
     "dev": "nodemon server.js",
     "postinstall": "npm rebuild sqlite3"
   },
-  "keywords": ["inventory", "calculator", "express", "sqlite3", "pg"],
+  "keywords": [
+    "inventory",
+    "calculator",
+    "express",
+    "sqlite3",
+    "pg"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -21,8 +27,8 @@
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "nodemon": "^3.0.0",
-    "eslint": "^8.51.0"
+    "eslint": "^8.51.0",
+    "nodemon": "^3.0.0"
   },
   "repository": {
     "type": "git",

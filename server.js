@@ -1,4 +1,7 @@
 require("dotenv").config();
+const DATABASE_URL = process.env.DATABASE_URL;
+console.log("Connected to DB at:", DATABASE_URL);
+
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
