@@ -15,13 +15,14 @@ if (!serviceAccount) {
   throw new Error("Firebase service account credentials not found in environment variables");
 }
 
+// Initialize Firebase Admin SDK (no need for Web SDK here)
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://furra-shqipe-default-rtdb.europe-west1.firebasedatabase.app"
 });
 
-// Initialize Firestore
-const db = getFirestore();
+// Initialize Firestore from Firebase Admin SDK
+const db = admin.firestore();
 const app = express();
 
 // Middleware setup
