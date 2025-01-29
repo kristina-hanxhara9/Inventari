@@ -1,12 +1,13 @@
 import express from "express";
 import cors from "cors";
 import admin from "firebase-admin";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
 import fs from "fs";
 import path from "path";
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 // Initialize Firebase Admin (for backend authentication)
-const serviceAccountPath = '/etc/secrets/FIREBASE_SERVICE_ACCOUNT'; // Path to the secret file
+const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
 const serviceAccount = fs.existsSync(serviceAccountPath)
   ? JSON.parse(fs.readFileSync(serviceAccountPath))
   : null;
@@ -15,7 +16,7 @@ if (!serviceAccount) {
   throw new Error("Firebase service account credentials not found in environment variables");
 }
 
-// Initialize Firebase Admin SDK (no need for Web SDK here)
+// Initialize Firebase Admin SDK
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://furra-shqipe-default-rtdb.europe-west1.firebasedatabase.app"
@@ -39,72 +40,64 @@ const authenticate = async (req, res, next) => {
     req.user = decodedToken;
     next();
   } catch (error) {
-    res.status(401).json({ error: "Unauthorized" });
+    res.status(401).json({ error: "Unauthorized" , message: error.message});
   }
 };
 
 // Routes
 app.get("/api/records", authenticate, async (req, res) => {
   try {
-    const recordsRef = collection(db, "database");
-    const querySnapshot = await getDocs(recordsRef);
+    const recordsRef = db.collection("database");
+    const querySnapshot = await recordsRef.get();
     const records = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     res.json(records);
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Server error");
+    console.error("Error getting records:", err.message);
+    res.status(500).json({ error: "Server error", message: err.message });
   }
 });
 
 app.post("/api/records", authenticate, async (req, res) => {
-  const { date, products, quantity, total, part1, part2, finalTotal } = req.body;
+  const { date, products, dailyTotal } = req.body;
   try {
-    const docRef = await addDoc(collection(db, "database"), {
-      date,
-      products,
-      quantity,
-      total,
-      part1,
-      part2,
-      finalTotal
-    });
-    res.json({ id: docRef.id, date, products, quantity, total, part1, part2, finalTotal });
+       const docRef = await db.collection("database").add({
+         date,
+          products,
+          dailyTotal
+      });
+      res.json({ id: docRef.id, date, products, dailyTotal });
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Error inserting record");
-  }
+    console.error("Error adding record:", err.message);
+    res.status(500).json({ error: "Error inserting record", message: err.message });
+   }
 });
 
 app.put("/api/records/:id", authenticate, async (req, res) => {
   const { id } = req.params;
-  const { date, products, quantity, total, part1, part2, finalTotal } = req.body;
+ const { date, products, dailyTotal } = req.body;
   try {
-    const recordRef = doc(db, "database", id);
-    await updateDoc(recordRef, {
-      date,
-      products,
-      quantity,
-      total,
-      part1,
-      part2,
-      finalTotal
-    });
-    res.json({ id, date, products, quantity, total, part1, part2, finalTotal });
+    const recordRef = db.collection("database").doc(id);
+      await recordRef.update({
+          date,
+         products,
+        dailyTotal
+      });
+    res.json({ id, date, products, dailyTotal});
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Error updating record");
+    console.error("Error updating record:", err.message);
+    res.status(500).json({ error: "Error updating record", message: err.message });
   }
 });
 
 app.delete("/api/records/:id", authenticate, async (req, res) => {
   const { id } = req.params;
   try {
-    const recordRef = doc(db, "database", id);
-    await deleteDoc(recordRef);
+    const recordRef = db.collection("database").doc(id);
+    await recordRef.delete();
     res.send("Record deleted");
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Error deleting record");
+    console.error("Error deleting record:", err.message);
+    res.status(500).json({ error: "Error deleting record", message: err.message });
   }
 });
 
