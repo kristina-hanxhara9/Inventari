@@ -1,67 +1,97 @@
 require("dotenv").config();
-const DATABASE_URL = process.env.DATABASE_URL;
-console.log("Connected to DB at:", DATABASE_URL);
+import express from "express";
+import cors from "cors";
+import admin from "firebase-admin";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
 
-const express = require("express");
-const cors = require("cors");
-const { Pool } = require("pg");
+// Initialize Firebase Admin (for backend authentication)
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: "https://furra-shqipe-default-rtdb.europe-west1.firebasedatabase.app"
+});
 
+// Initialize Firestore
+const db = getFirestore();
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-});
-
-// Fetch records
-app.get("/api/records", async (req, res) => {
+// Middleware to check authentication
+const authenticate = async (req, res, next) => {
     try {
-        const result = await pool.query("SELECT * FROM inventory_db ORDER BY date DESC");
-        res.json(result.rows);
+        const token = req.headers.authorization?.split("Bearer ")[1];
+        if (!token) return res.status(401).json({ error: "Unauthorized" });
+
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        req.user = decodedToken;
+        next();
+    } catch (error) {
+        res.status(401).json({ error: "Unauthorized" });
+    }
+};
+
+// Fetch records from Firestore
+app.get("/api/records", authenticate, async (req, res) => {
+    try {
+        const recordsRef = collection(db, "database");
+        const querySnapshot = await getDocs(recordsRef);
+        const records = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(records);
     } catch (err) {
         console.error(err);
         res.status(500).send("Server error");
     }
 });
 
-// Insert a record
-app.post("/api/records", async (req, res) => {
-    const { date, details, total } = req.body;
+// Insert a record into Firestore
+app.post("/api/records", authenticate, async (req, res) => {
+    const { date, products, quantity, total, part1, part2, finalTotal } = req.body;
     try {
-        const result = await pool.query(
-            "INSERT INTO inventory_db (date, details, total) VALUES ($1, $2, $3) RETURNING *",
-            [date, details, total]
-        );
-        res.json(result.rows[0]);
+        const docRef = await addDoc(collection(db, "database"), {
+            date,
+            products,
+            quantity,
+            total,
+            part1,
+            part2,
+            finalTotal
+        });
+        res.json({ id: docRef.id, date, products, quantity, total, part1, part2, finalTotal });
     } catch (err) {
         console.error(err);
         res.status(500).send("Error inserting record");
     }
 });
 
-// Update a record
-app.put("/api/records/:id", async (req, res) => {
+// Update a record in Firestore
+app.put("/api/records/:id", authenticate, async (req, res) => {
     const { id } = req.params;
-    const { date, details, total } = req.body;
+    const { date, products, quantity, total, part1, part2, finalTotal } = req.body;
     try {
-        const result = await pool.query(
-            "UPDATE inventory_db SET date = $1, details = $2, total = $3 WHERE id = $4 RETURNING *",
-            [date, details, total, id]
-        );
-        res.json(result.rows[0]);
+        const recordRef = doc(db, "database", id);
+        await updateDoc(recordRef, {
+            date,
+            products,
+            quantity,
+            total,
+            part1,
+            part2,
+            finalTotal
+        });
+        res.json({ id, date, products, quantity, total, part1, part2, finalTotal });
     } catch (err) {
         console.error(err);
         res.status(500).send("Error updating record");
     }
 });
 
-// Delete a record
-app.delete("/api/records/:id", async (req, res) => {
+// Delete a record from Firestore
+app.delete("/api/records/:id", authenticate, async (req, res) => {
     const { id } = req.params;
     try {
-        await pool.query("DELETE FROM inventory_db WHERE id = $1", [id]);
+        const recordRef = doc(db, "database", id);
+        await deleteDoc(recordRef);
         res.send("Record deleted");
     } catch (err) {
         console.error(err);

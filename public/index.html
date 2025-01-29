@@ -34,445 +34,208 @@
         }
 
         .scrollable {
-            max-height: 400px;
+            max-height: 300px;
             overflow-y: auto;
             display: block;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 10%;
-            left: 50%;
-            transform: translate(-50%, 0);
-            background: white;
-            border: 1px solid #ccc;
-            padding: 20px;
-            z-index: 1000;
-            max-height: 80%;
-            overflow-y: auto;
-        }
-
-        .overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 999;
         }
 
         @media (max-width: 600px) {
             table {
                 font-size: 12px;
             }
-
             input, button {
-                margin: 5px 0;
                 width: 100%;
             }
         }
     </style>
 </head>
 <body>
-    <h1>Inventari</h1>
 
-    <h2>Produktet</h2>
-    <div class="scrollable">
-        <table>
-            <thead>
-                <tr>
-                    <th>Produktet</th>
-                    <th>Cmimi (per cope)</th>
-                    <th>Sasia</th>
-                    <th>Kostoja Totale</th>
-                    <th>Pjesa e Pare e Dites</th>
-                    <th>Pjesa e Dyte e Dites</th>
-                    <th>Totali Përfundimtar</th>
-                </tr>
-            </thead>
-            <tbody id="productTable"></tbody>
-        </table>
-    </div>
+<h1>Inventari</h1>
 
-    <h3>Kostoja Totale Ditore: L<span id="dailyTotal">0.00</span></h3>
-    <button onclick="saveRecord()">Ruaji të dhënat</button>
+<h2>Produktet</h2>
+<div class="scrollable">
+    <table>
+        <thead>
+            <tr>
+                <th>Produktet</th>
+                <th>Cmimi (per cope)</th>
+                <th>Sasia</th>
+                <th>Kostoja Totale</th>
+                <th>Pjesa e Pare e Dites</th>
+                <th>Pjesa e Dyte e Dites</th>
+                <th>Totali Përfundimtar</th>
+            </tr>
+        </thead>
+        <tbody id="productTable"></tbody>
+    </table>
+</div>
 
-    <h2>Regjistrime</h2>
-    <button onclick="exportToCSV()">Shkarko</button>
-    <div class="scrollable">
-        <table>
-            <thead>
-                <tr>
-                    <th>Data</th>
-                    <th>Detajet</th>
-                    <th>Totali</th>
-                    <th>Veprime</th>
-                </tr>
-            </thead>
-            <tbody id="recordTable"></tbody>
-        </table>
-    </div>
+<h3>Kostoja Totale Ditore: L<span id="dailyTotal">0.00</span></h3>
+<button onclick="saveRecord()">Ruaji të dhënat</button>
 
-    <!-- Edit Modal -->
-    <div id="editModal" class="modal">
-        <h3>Edito Regjistrimin</h3>
-        <div class="scrollable">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Produktet</th>
-                        <th>Cmimi (per cope)</th>
-                        <th>Sasia</th>
-                        <th>Kostoja Totale</th>
-                        <th>Pjesa e Pare e Dites</th>
-                        <th>Pjesa e Dyte e Dites</th>
-                        <th>Totali Përfundimtar</th>
-                    </tr>
-                </thead>
-                <tbody id="editProductTable"></tbody>
-            </table>
-        </div>
-        <button onclick="saveEdit()">Ruaj Ndryshimet</button>
-        <button onclick="closeModal()">Anullo</button>
-    </div>
+<h2>Regjistrime</h2>
+<button onclick="exportToCSV()">Shkarko</button>
+<div class="scrollable">
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Produktet</th>
+                <th>Cmimi</th>
+                <th>Sasia</th>
+                <th>Kostoja Totale</th>
+                <th>Pjesa e Pare e Dites</th>
+                <th>Pjesa e Dyte e Dites</th>
+                <th>Totali Përfundimtar</th>
+                <th>Totali</th>
+                <th>Veprime</th>
+            </tr>
+        </thead>
+        <tbody id="recordTable"></tbody>
+    </table>
+</div>
 
-    <div id="overlay" class="overlay"></div>
-
-    <script>
-        const products = [
-             { product: "Ekmek", price: 1.5 },
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        renderProductTable();
+    });const products = [
+            { product: "Ekmek", price: 1.5 },
             { product: "Torte", price: 12.000 },
-            { product: "Torte", price: 10.000 },
             { product: "Zupa", price: 1.000 },
-            { product: "Zupa", price: 1.200 },
-            { product: "Trilece", price: 5.000 },
-            { product: "Trilece", price: 1.500 },
-            { product: "Trilece", price: 7.000 },
-            { product: "Kausha", price: 10.000 },
+             { product: "Trilece", price: 5.000 },
+             { product: "Kausha", price: 10.000 },
             { product: "Peta", price: 1.000 },
-            { product: "Peta e madhe", price: 12.000 },
             { product: "Rulon", price: 10.000 },
             { product: "Pastashu", price: 1.000 },
-            { product: "Pastashu", price: 1.200 },
-            { product: "Kompeka", price: 10.000 },
-            { product: "Revani", price: 1.5 },
-            { product: "Hashure", price: 12.000 },
+             { product: "Kompeka", price: 10.000 },
             { product: "Bakllava", price: 10.000 },
-            { product: "Torte racion", price: 1.5 },
-            { product: "Porcione", price: 12.000 },
-            { product: "Torte", price: 10.000 },
+           { product: "Torte racion", price: 1.5 },
+           { product: "Porcione", price: 12.000 },
             { product: "Tolluma", price: 1.5 },
             { product: "Buke franxholla", price: 12.000 },
             { product: "Franxholla", price: 6.000 },
             { product: "Buke me topa", price: 10.000 },
-            { product: "Buke masive", price: 1.5 },
-            { product: "Buke me fara", price: 12.000 },
-            { product: "Buke fshati", price: 10.000 },
-            { product: "Buke e rrumbullaket", price: 1.5 },
-            { product: "Buke e gjate", price: 12.000 },
-            { product: "Kulac", price: 6.000 },
-            { product: "Buke me ullinj", price: 12.000 },
-            { product: "Buke e verdhe", price: 6.000 },
-            { product: "Buke integrale", price: 10.000 },
+             { product: "Buke masive", price: 1.5 },
+             { product: "Buke me fara", price: 12.000 },
+             { product: "Buke fshati", price: 10.000 },
+           { product: "Buke e rrumbullaket", price: 1.5 },
+           { product: "Buke e gjate", price: 12.000 },
+           { product: "Kulac", price: 6.000 },
+          { product: "Buke me ullinj", price: 12.000 },
+           { product: "Buke e verdhe", price: 6.000 },
+             { product: "Buke integrale", price: 10.000 },
             { product: "Buke Bogeti", price: 1.5 },
-            { product: "Buke misri", price: 12.000 },
-            { product: "Buke thekre", price: 10.000 },
+           { product: "Buke misri", price: 12.000 },
+           { product: "Buke thekre", price: 10.000 },
             { product: "Pite", price: 1.5 },
             { product: "Simite", price: 12.000 },
             { product: "Sanduic", price: 6.000 },
-            { product: "Sanduic me fara", price: 12.000 },
-            { product: "Sanduic i verdhe", price: 6.000 },
-            { product: "Briosh", price: 10.000 },
+             { product: "Sanduic me fara", price: 12.000 },
+             { product: "Sanduic i verdhe", price: 6.000 },
+             { product: "Briosh", price: 10.000 },
             { product: "Donat", price: 1.5 },
-            { product: "Byrek", price: 5.00 },
-            { product: "Byrek", price: 7.00 },
-            { product: "Pica", price: 1.5 },
-            { product: "Kos 380gr", price: 12.000 },
-            { product: "Kos bidon", price: 6.000 },
-            { product: "Kos i madh", price: 12.000 },
+             { product: "Byrek", price: 5.00 },
+             { product: "Pica", price: 1.5 },
+             { product: "Kos 380gr", price: 12.000 },
+             { product: "Kos bidon", price: 6.000 },
+             { product: "Kos i madh", price: 12.000 },
             { product: "Kos 200", price: 6.000 },
-            { product: "Dhalle bidon", price: 10.000 },
-            { product: "Dhalle karton", price: 1.5 },
-            { product: "Wumesht bidon", price: 12.000 },
+           { product: "Dhalle bidon", price: 10.000 },
             { product: "Salce kosi 900gr", price: 10.000 },
-            { product: "Salce kosi 450gr", price: 1.5 },
-            { product: "Kos frutash", price: 12.000 },
-            { product: "Boze", price: 6.000 },
-            { product: "Uje Bukanik 7kg", price: 12.000 },
-            { product: "Uje Bukanik 1.5kg", price: 6.000 },
-            { product: "U Bukanik vgl", price: 12.000 },
-            { product: "U Lajthiza 5kg", price: 6.000 },
-            { product: "U Lajthiza 2kg", price: 10.000 },
-            { product: "U Lajthiza 1.5kg", price: 1.5 },
-            { product: "U Lajthiza vgl", price: 12.000 },
-            { product: "U Tepelena 5kg", price: 10.000 },
-            { product: "U Tepelena 1.5kg", price: 1.5 },
-            { product: "Tepelena vgl", price: 12.000 },
-            { product: "Kola Bidon 1.5 kg", price: 6.000 },
-            { product: "Kola Bidon 1 kg", price: 1.5 },
-            { product: "Kola vgl", price: 12.000 },
-            { product: "Monster", price: 10.000 },
-            { product: "Uje vitamina", price: 1.5 },
-            { product: "Boze natyrale", price: 12.000 },
-            { product: "Qumet", price: 6.000 },
-            { product: "Uje", price: 1.5 },
+           { product: "Boze", price: 6.000 },
+             { product: "Uje Bukanik 7kg", price: 1.5 }
         ];
+        function renderProductTable() {
+        const productTable = document.getElementById("productTable");
+        productTable.innerHTML = "";
 
-        let allProducts = [];
-let records = [];
-let editIndex = null;
-
-const productTable = document.getElementById("productTable");
-const dailyTotalDisplay = document.getElementById("dailyTotal");
-const recordTable = document.getElementById("recordTable");
-const editModal = document.getElementById("editModal");
-const overlay = document.getElementById("overlay");
-const editProductTable = document.getElementById("editProductTable");
-
-function updateProductTable() {
-    allProducts = [];
-    productTable.innerHTML = "";
-
-    // Add predefined products
-    products.forEach((product, index) => {
-        createTableRow(product, index);
-        allProducts.push({ ...product, quantity: 0, firstPart: 0, secondPart: 0, totalCost: 0, finalTotal: 0 });
-    });
-
-    // Add blank rows for new entries
-    for (let i = 0; i < 10; i++) {
-        createTableRow({ product: "", price: "", quantity: 0, firstPart: 0, secondPart: 0 }, products.length + i, true);
-        allProducts.push({ product: "", price: 0, quantity: 0, firstPart: 0, secondPart: 0, totalCost: 0, finalTotal: 0 });
-    }
-
-    addInputListeners();
-    updateDailyTotal();
-}
-
-function createTableRow(product, index, isEditable = false) {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-        <td>${isEditable ? `<input type="text" class="product-name" placeholder="Produkt" value="${product.product || ''}">` : product.product}</td>
-        <td><input type="number" class="price" value="${product.price || ''}" /></td>
-        <td><input type="number" class="quantity" value="${product.quantity || 0}" /></td>
-        <td class="total-cost">0.00</td>
-        <td><input type="number" class="first-part" value="${product.firstPart || 0}" /></td>
-        <td><input type="number" class="second-part" value="${product.secondPart || 0}" /></td>
-        <td class="final-total">0.00</td>
-    `;
-    productTable.appendChild(row);
-}
-
-function addInputListeners() {
-    productTable.querySelectorAll("input").forEach(input => {
-        input.addEventListener("input", updateRowTotals);
-    });
-}
-
-function updateRowTotals(event) {
-    const row = event.target.closest("tr");
-    if (!row) return;
-
-    const index = Array.from(productTable.rows).indexOf(row);
-    const productNameInput = row.querySelector(".product-name");
-    const priceInput = row.querySelector(".price");
-    const quantityInput = row.querySelector(".quantity");
-    const firstPartInput = row.querySelector(".first-part");
-    const secondPartInput = row.querySelector(".second-part");
-    const totalCostCell = row.querySelector(".total-cost");
-    const finalTotalCell = row.querySelector(".final-total");
-
-    const productName = productNameInput ? productNameInput.value : products[index].product;
-    const price = parseFloat(priceInput.value) || 0;
-    const quantity = parseFloat(quantityInput.value) || 0;
-    const firstPart = parseFloat(firstPartInput.value) || 0;
-    const secondPart = parseFloat(secondPartInput.value) || 0;
-
-    const totalCost = price * quantity;
-    const finalTotal = totalCost - (firstPart * price) - (secondPart * price);
-
-    totalCostCell.textContent = totalCost.toFixed(2);
-    finalTotalCell.textContent = finalTotal.toFixed(2);
-
-    allProducts[index] = {
-        product: productName,
-        price,
-        quantity,
-        firstPart,
-        secondPart,
-        totalCost,
-        finalTotal,
-    };
-
-    updateDailyTotal();
-}
-
-function updateDailyTotal() {
-    const total = allProducts.reduce((sum, product) => sum + (product.finalTotal || 0), 0);
-    dailyTotalDisplay.textContent = total.toFixed(2);
-}
-
-// Fetch and update record table
-async function updateRecordTable() {
-    try {
-        const response = await fetch("https://inventari-okqu.onrender.com/api/records");
-        if (!response.ok) throw new Error("Error fetching records");
-
-        records = await response.json();
-        recordTable.innerHTML = "";
-        records.forEach((record, index) => {
+        products.forEach((product, index) => {
             const row = document.createElement("tr");
             row.innerHTML = `
-                <td>${record.Date}</td>
-                <td><button onclick="viewDetails(${index})">Shiko</button></td>
-                <td>${record.Totali_Perfundimtar.toFixed(2)}</td>
-                <td><button onclick="deleteRecord(${index})">Fshij</button></td>
+                <td>${product.product}</td>
+                <td>${product.price}</td>
+                <td><input type="number" id="quantity-${index}" value="0" oninput="updateDailyTotal()"></td>
+                <td id="total-${index}">0</td>
+                <td><input type="number" id="part1-${index}" value="0" oninput="updateDailyTotal()"></td>
+                <td><input type="number" id="part2-${index}" value="0" oninput="updateDailyTotal()"></td>
+                <td id="finalTotal-${index}">0</td>
             `;
-            recordTable.appendChild(row);
+            productTable.appendChild(row);
         });
-    } catch (error) {
-        console.error("Error:", error);
-        alert("Gabim gjatë marrjes së të dhënave.");
-    }
-}
-
-// Add saveRecord function for adding a new record
-async function saveRecord() {
-    const date = new Date().toLocaleDateString();
-    const details = allProducts.filter(p => p.product && (p.quantity > 0 || p.firstPart > 0 || p.secondPart > 0));
-    const total = parseFloat(dailyTotalDisplay.textContent) || 0;
-
-    if (!details.length) {
-        alert("Nuk ka asnjë produkt të regjistruar.");
-        return;
     }
 
-    const record = { date, details, total };
+    function updateDailyTotal() {
+        let dailyTotal = 0;
 
-    try {
-        const response = await fetch("https://inventari-okqu.onrender.com/api/records", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(record),
+        products.forEach((product, index) => {
+            const quantity = parseFloat(document.getElementById(`quantity-${index}`).value) || 0;
+            const part1 = parseFloat(document.getElementById(`part1-${index}`).value) || 0;
+            const part2 = parseFloat(document.getElementById(`part2-${index}`).value) || 0;
+
+            const totalCost = quantity * product.price;
+            const finalTotal = totalCost + (part1 * 0.5) + (part2 * 0.5);
+
+            document.getElementById(`total-${index}`).innerText = totalCost.toFixed(2);
+            document.getElementById(`finalTotal-${index}`).innerText = finalTotal.toFixed(2);
+
+            dailyTotal += finalTotal;
         });
 
-        if (response.ok) {
-            alert("Të dhënat u ruajtën me sukses!");
-            await updateRecordTable();
-        } else {
-            const errorMessage = await response.text();
-            alert(`Gabim gjatë ruajtjes së të dhënave: ${errorMessage}`);
-        }
-    } catch (error) {
-        console.error("Error:", error);
-        alert("Gabim gjatë ruajtjes së të dhënave.");
+        document.getElementById("dailyTotal").innerText = dailyTotal.toFixed(2);
     }
-}
 
-// Other functions like viewDetails, deleteRecord, saveEdit remain unchanged.
+    function saveRecord() {
+        const record = {
+            date: new Date().toLocaleString(),
+            products: products.map((product, index) => {
+                return {
+                    product: product.product,
+                    price: product.price,
+                    quantity: document.getElementById(`quantity-${index}`).value,
+                    part1: document.getElementById(`part1-${index}`).value,
+                    part2: document.getElementById(`part2-${index}`).value,
+                    finalTotal: document.getElementById(`finalTotal-${index}`).innerText
+                };
+            }),
+            dailyTotal: document.getElementById("dailyTotal").innerText
+        };
 
-function viewDetails(index) {
-    const record = records[index];
-    editIndex = index;
-
-    editProductTable.innerHTML = "";
-    record.details.forEach((product) => {
-        addRowToEditTable(product);
-    });
-
-    editModal.style.display = "block";
-    overlay.style.display = "block";
-}
-
-function addRowToEditTable(product) {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-        <td>${product.Produktet}</td>
-        <td>${product.Cmimi_per_cope}</td>
-        <td>${product.Sasia}</td>
-        <td>${product.Kostoja_Totale.toFixed(2)}</td>
-        <td>${product.Pjesa_e_Pare_e_Dites}</td>
-        <td>${product.Pjesa_e_Dyte_e_Dites}</td>
-        <td>${product.Totali_Perfundimtar.toFixed(2)}</td>
-    `;
-    editProductTable.appendChild(row);
-}
-
-function closeModal() {
-    editModal.style.display = "none";
-    overlay.style.display = "none";
-}
-
-async function saveEdit() {
-    if (editIndex !== null) {
-        const updatedRecord = records[editIndex];
-        updatedRecord.details = allProducts.filter(p => p.product && (p.quantity > 0 || p.firstPart > 0 || p.secondPart > 0));
-        updatedRecord.total = parseFloat(dailyTotalDisplay.textContent) || 0;
-
-        try {
-            const response = await fetch(`https://inventari-okqu.onrender.com/api/records/${updatedRecord.id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(updatedRecord),
-            });
-
-            if (!response.ok) {
-                throw new Error("Gabim gjatë përditësimit të të dhënave.");
-            }
-
-            updateRecordTable();
-        } catch (error) {
-            console.error("Error:", error);
-            alert("Gabim gjatë përditësimit të të dhënave.");
-        }
+        addRecordToTable(record);
     }
-    closeModal();
-}
 
-async function deleteRecord(index) {
-    const record = records[index];
+    function addRecordToTable(record) {
+        const recordTable = document.getElementById("recordTable");
+        const row = document.createElement("tr");
 
-    try {
-        const response = await fetch(`https://inventari-okqu.onrender.com/api/records/${record.id}`, {
-            method: "DELETE",
-        });
+        let productDetails = record.products.map(p => p.product).join(", ");
+        let productPrices = record.products.map(p => p.price).join(", ");
+        let productQuantities = record.products.map(p => p.quantity).join(", ");
+        let productFinalTotals = record.products.map(p => p.finalTotal).join(", ");
+        let part1Values = record.products.map(p => p.part1).join(", ");
+        let part2Values = record.products.map(p => p.part2).join(", ");
 
-        if (!response.ok) {
-            throw new Error("Gabim gjatë fshirjes së të dhënave.");
-        }
+        row.innerHTML = `
+            <td>${record.date}</td>
+            <td>${productDetails}</td>
+            <td>${productPrices}</td>
+            <td>${productQuantities}</td>
+            <td>${productFinalTotals}</td>
+            <td>${part1Values}</td>
+            <td>${part2Values}</td>
+            <td>${record.dailyTotal}</td>
+            <td>
+                <button onclick="deleteRecord(this)">Delete</button>
+            </td>
+        `;
 
-        records.splice(index, 1);
-        updateRecordTable();
-    } catch (error) {
-        console.error("Error:", error);
-        alert("Gabim gjatë fshirjes së të dhënave.");
+        recordTable.appendChild(row);
     }
-}
 
-function exportToCSV() {
-    let csvContent = "Date,Details,Total\n";
-    records.forEach((record) => {
-        const details = record.details.map((p) => `${p.Produktet}:${p.Sasia}`).join(" | ");
-        csvContent += `${record.Date},${details},${record.Totali_Perfundimtar.toFixed(2)}\n`;
-    });
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "records.csv";
-    link.click();
-}
-
-window.onload = function() {
-    updateProductTable();
-    updateRecordTable();
-};
-
+    function deleteRecord(button) {
+        button.parentElement.parentElement.remove();
+    }
 </script>
+
 </body>
 </html>
